@@ -19,7 +19,7 @@ int save_data();
 #include <xtensor/xfixed.hpp>
 #include <xtensor/xtensor.hpp>
 
-int main(int argc, char* argv[])
+int main1(int argc, char* argv[])
 {
     xt::xarray<double> arr1
 	  { {1.0, 2.0, 3.0},
@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
 
 
 
-int main2() {
+int main() {
 
     //qc::QuantumComputation qc1{};
 

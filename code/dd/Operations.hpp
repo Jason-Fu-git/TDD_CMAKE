@@ -1,5 +1,9 @@
 #pragma once
 
+/**
+ * Warning : None of the functions in this file have been implemented.
+ */
+
 #include "Definitions.hpp"
 #include "../dd/GateMatrixDefinitions.hpp"
 #include "../dd/Package.hpp"

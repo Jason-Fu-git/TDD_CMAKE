@@ -82,6 +82,9 @@ namespace dd {
       r.i->value = (ai * br - ar * bi) / cmag;
     }
   }
+
+  // Return the square of the magnitude of a complex number
+  // ||r||^2 + ||i||^2
   static inline fp mag2(const Complex& a) {
     auto ar = CTEntry::val(a.r);
     auto ai = CTEntry::val(a.i);

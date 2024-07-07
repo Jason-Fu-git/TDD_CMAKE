@@ -10,8 +10,9 @@
 namespace dd
 {
 	/**
-	 *\brief integer type used for indexing qubits
-	* needs to be a signed type to encode -1 as the index for the terminal
+	 *\brief integer type used for indexing qubits.
+	 *
+	* Needs to be a signed type to encode -1 as the index for the terminal
 	* std::int8_t can address up to 128 qubits as [0, ..., 127]
 	*/
 	using Qubit = std::int16_t;

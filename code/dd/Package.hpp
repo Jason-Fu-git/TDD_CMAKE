@@ -54,6 +54,10 @@
 
 namespace dd {
 
+    /**
+     * Packs basic TDD operations, like generation, normalization, addition and contraction.
+     *
+     */
     template<class Config>
     class Package {
         static_assert(std::is_base_of_v<DDPackageConfig, Config>, "Config must be derived from DDPackageConfig");
@@ -258,7 +262,6 @@ namespace dd {
             return res;
         }
 
-        //template <class Node>
         TDD diag_matrix_2_TDD(const GateMatrix mat, std::vector<Index> var_out) {
 
             TDD res;
@@ -344,8 +347,7 @@ namespace dd {
                 zero.push_back(e.p->e[k].w.approximatelyZero());
             }
 
-            // make sure to release cached numbers approximately zero, but not exactly
-            // zero
+            // make sure to release cached numbers approximately zero, but not exactly zero
             if (cached) {
                 for (auto i = 0U; i < R; i++) {
                     if (zero[i] && e.p->e[i].w != Complex::zero) {
@@ -363,10 +365,12 @@ namespace dd {
                     continue;
                 }
                 if (argmax == -1) {
+                    // argmax has not been initialized
                     argmax = static_cast<decltype(argmax)>(i);
                     max = ComplexNumbers::mag2(e.p->e[i].w);
                     maxc = e.p->e[i].w;
                 } else {
+                    // compare with existing max
                     auto mag = ComplexNumbers::mag2(e.p->e[i].w);
                     if (mag - max > ComplexTable<>::tolerance()) {
                         argmax = static_cast<decltype(argmax)>(i);
@@ -379,15 +383,15 @@ namespace dd {
             // all equal to zero
             if (argmax == -1) {
                 if (!cached && !e.isTerminal()) {
-                    // If it is not a cached computation, the node has to be put back into
-                    // the chain
+                    // If it is not a cached computation, the node has to be put back into the chain
                     getUniqueTable<Node>().returnNode(e.p);
                 }
                 return Edge<Node>::zero;
             }
 
             auto r = e;
-            // divide each entry by max
+            // multiply the weight of the edge by maxc
+            // divide each entry by maxc
             for (auto i = 0U; i < R; ++i) {
                 if (static_cast<decltype(argmax)>(i) == argmax) {
                     if (cached) {
@@ -487,8 +491,8 @@ namespace dd {
         }
 
         /**
-         *\brief create a normalized DD node and return an edge pointing to it. The node is
-        * not recreated if it already exists.
+         *\brief create a normalized, reduced DD node and return an edge pointing to it. The node will
+        * not be recreated if it already exists.
         */
         template<class Node>
         Edge<Node> makeDDNode(
@@ -547,8 +551,6 @@ namespace dd {
 
 
     public:
-        //==========================================我写的========================================
-
 
         ComputeTable<mCachedEdge, mCachedEdge, mCachedEdge, Config::CT_VEC_ADD_NBUCKET> addTable{};
         ComputeTable2<mEdge, mEdge, mCachedEdge, Config::CT_MAT_MAT_MULT_NBUCKET> contTable{};
@@ -564,11 +566,11 @@ namespace dd {
                 return self->next[new_key];
             } else {
                 self->next[new_key] = new key_2_new_key_node{static_cast<short>(self->level + 1), new_key, {}, self};
-
                 return self->next[new_key];
             }
         }
 
+        // todo : determine the use of this function
         template<class Edge>
         Edge T_add(const Edge &x, const Edge &y) {
 
@@ -576,7 +578,10 @@ namespace dd {
         }
 
 
-        //template <class LeftOperand, class RightOperand>
+        /**
+         * Contract two TDDs, whose common indices will be contracted.
+         *
+         */
         TDD cont(TDD tdd1, TDD tdd2) {
 
             TDD res;
@@ -586,6 +591,7 @@ namespace dd {
             std::vector<std::string> var_cont;
             std::vector<std::string> var_out_key;
 
+            // search for common indices
             int k;
             int k1;
             for (k = 0; k < tdd1.index_set.size(); ++k) {
@@ -599,6 +605,7 @@ namespace dd {
                         break;
                     }
                 }
+
                 if (flag) {
                     var_out.push_back(tdd1.index_set[k]);
                     var_out_key.push_back(tdd1.index_set[k].key);
@@ -619,6 +626,8 @@ namespace dd {
                     var_out_key.push_back(tdd2.index_set[k].key);
                 }
             }
+
+            // avoid appending indices repeatedly
             for (k = 0; k < var_cont_temp.size(); ++k) {
                 if (find(var_out_key.begin(), var_out_key.end(), var_cont_temp[k]) == var_out_key.end()) {
                     if (find(var_cont.begin(), var_cont.end(), var_cont_temp[k]) == var_cont.end()) {
@@ -628,6 +637,7 @@ namespace dd {
             }
 
 
+            // print information
             if (to_test) {
                 std::cout << "TDD1: ";
                 for (const auto &element: tdd1.key_2_index) {
@@ -643,10 +653,11 @@ namespace dd {
             }
 
 
-            key_2_new_key_node *key_2_new_key1 = key_2_new_key_tree_header;
-            key_2_new_key_node *key_2_new_key2 = key_2_new_key_tree_header;
+            key_2_new_key_node *key_2_new_key1 = key_2_new_key_tree_header; //
+            key_2_new_key_node *key_2_new_key2 = key_2_new_key_tree_header; //
 
-            std::vector<std::string> new_key_2_index;
+            std::vector<std::string> new_key_2_index; // map : int(key) -> string(index)
+
             k1 = 0;
             int k2 = 0;
             int new_key = 0;
@@ -655,8 +666,10 @@ namespace dd {
             int repeat_time = 1;
             float last_cont_idx = -2;
 
+            // iterate through all the indices
             while (k1 < m1 || k2 < m2) {
 
+                // When one of the TDDs is exhausted, append the remaining indices from the other TDD.
                 if (k1 == m1) {
                     for (k2; k2 < m2; ++k2) {
                         key_2_new_key2 = append_new_key(key_2_new_key2, new_key);
@@ -674,6 +687,7 @@ namespace dd {
                     break;
                 }
 
+                // Otherwise, compare the order of the indices and append the smaller one.
                 if (varOrder[tdd1.key_2_index[k1]] < varOrder[tdd2.key_2_index[k2]]) {
                     key_2_new_key1 = append_new_key(key_2_new_key1, new_key);
                     new_key_2_index.push_back(tdd1.key_2_index[k1]);
@@ -685,6 +699,7 @@ namespace dd {
                     new_key++;
                     k2++;
                 } else if (find(var_out_key.begin(), var_out_key.end(), tdd1.key_2_index[k1]) == var_out_key.end()) {
+                    // The index is going to be contracted
                     if (new_key - last_cont_idx <= 0.5) {
                         last_cont_idx = last_cont_idx + 1 / (3 * nqubits) * repeat_time;
                         repeat_time += 1;
@@ -702,6 +717,7 @@ namespace dd {
                     }
 
                 } else {
+                    // index with the same order but not going to be contracted
                     key_2_new_key1 = append_new_key(key_2_new_key1, new_key);
                     key_2_new_key2 = append_new_key(key_2_new_key2, new_key);
                     new_key_2_index.push_back(tdd1.key_2_index[k1]);
@@ -761,13 +777,21 @@ namespace dd {
 
     private:
 
+        /**
+         * Add two TDDs.
+         * @param x root edge for TDD F
+         * @param y root edge for TDD G
+         * @return
+         */
         template<class Node>
         Edge<Node> T_add2(const Edge<Node> &x, const Edge<Node> &y) {
 
+            // guarantee the order
             if (x.p > y.p) {
                 return T_add2(y, x);
             }
 
+            // trivial cases
             if (x.p == nullptr) {
                 return y;
             }
@@ -788,6 +812,8 @@ namespace dd {
                 r.w = cn.getCached(CTEntry::val(x.w.r), CTEntry::val(x.w.i));
                 return r;
             }
+
+            // rF = rG, return G with new weight F.w + G.w
             if (x.p == y.p) {
                 auto r = y;
                 r.w = cn.addCached(x.w, y.w);
@@ -801,6 +827,7 @@ namespace dd {
             auto xCopy = x;
             auto yCopy = y;
             if (x.w != Complex::one) {
+                // guarantee the uniqueness of look up
                 xCopy.w = Complex::one;
                 yCopy.w = cn.divCached(y.w, x.w);
             }
@@ -814,12 +841,14 @@ namespace dd {
                 }
                 auto c = cn.getCached(r.w);
                 if (x.w != Complex::one) {
+                    // multiply back
                     cn.mul(c, c, x.w);
                     cn.returnToCache(yCopy.w);
                 }
                 return {r.p, c};
             }
 
+            // w is the smaller index between rF and rG
             const Qubit w = (x.isTerminal() || (!y.isTerminal() && y.p->v > x.p->v))
                             ? y.p->v
                             : x.p->v;
@@ -828,6 +857,8 @@ namespace dd {
 
             std::vector<Edge<Node>> edge(n);
             for (std::size_t i = 0U; i < n; i++) {
+                // e1 <- rF_{x=i} if x.p->v == w else F
+                // Note : We use xCopy instead of x, in order to guarantee the uniqueness in lookup table
                 Edge<Node> e1{};
                 if (!x.isTerminal() && x.p->v == w) {
                     e1 = x.p->e[i];
@@ -840,6 +871,7 @@ namespace dd {
                         e1 = {nullptr, Complex::zero};
                     }
                 }
+                // e2 <- rG_{y=i} if y.p->v == w else G
                 Edge<Node> e2{};
                 if (!y.isTerminal() && y.p->v == w) {
                     e2 = y.p->e[i];
@@ -854,7 +886,7 @@ namespace dd {
                     }
                 }
 
-
+                // recurse here
                 edge[i] = T_add2(e1, e2);
 
 
@@ -871,20 +903,31 @@ namespace dd {
 
             addTable.insert({xCopy.p, xCopy.w}, {yCopy.p, yCopy.w}, {e.p, e.w});
             if (x.w != Complex::one) {
+                // multiply back
                 cn.mul(e.w, e.w, x.w);
                 cn.returnToCache(yCopy.w);
             }
             return e;
         }
 
-        //template <class LeftOperandNode, class RightOperandNode>
+        /**
+         * Contract two edges.
+         *
+         * @note If one of the edges are empty, the function will return an empty edge.
+         * @param x root edge for TDD F
+         * @param y root edge for TDD G
+         * @param key_2_new_key1 new index set for F
+         * @param key_2_new_key2 new index set for G
+         * @param var_num The size of the index set to be contracted
+         * @return
+         */
         Edge<mNode> cont2(const Edge<mNode> &x, const Edge<mNode> &y, key_2_new_key_node *key_2_new_key1,
                           key_2_new_key_node *key_2_new_key2, const int var_num) {
 
-            //std::cout <<"838 " << x.w << " " << y.w << " " << int(x.p->v) << " " << int(y.p->v) << std::endl;
 
             using ResultEdge = Edge<mNode>;
 
+            // Empty edge
             if (x.p == nullptr) {
                 return {nullptr, Complex::zero};
             }
@@ -892,11 +935,12 @@ namespace dd {
                 return y;
             }
 
+            // Contraction between two zero tensors always results in zero tensor
             if (x.w.exactlyZero() || y.w.exactlyZero()) {
                 return ResultEdge::zero;
             }
 
-
+            // Both edges are trivial, return a terminal node, whose weight is wx * wy * 2^len(var)
             if (x.p->v == -1 && y.p->v == -1) {
                 auto c = cn.mulCached(x.w, y.w);
 
@@ -912,7 +956,7 @@ namespace dd {
                 temp_key_2_new_key2 = temp_key_2_new_key2->father;
             }
 
-
+            // x is trivial, y is not
             if (x.p->v == -1 && var_num == 0 && std::abs(temp_key_2_new_key2->new_key - y.p->v) < 1e-10) {
                 return ResultEdge{y.p, cn.mulCached(x.w, y.w)};
             }
@@ -922,6 +966,7 @@ namespace dd {
                 temp_key_2_new_key1 = temp_key_2_new_key1->father;
             }
 
+            // y is trivial, x is not
             if (y.p->v == -1 && var_num == 0 && std::abs(temp_key_2_new_key1->new_key - x.p->v) < 1e-10) {
                 return ResultEdge{x.p, cn.mulCached(x.w, y.w)};
             }
@@ -953,15 +998,17 @@ namespace dd {
 
 
             float newk1 = temp_key_2_new_key1->new_key;
-
             float newk2 = temp_key_2_new_key2->new_key;
 
             ResultEdge e1{}, e2{}, r{};
 
+            // recursively compute contraction
             if (newk1 > newk2) {
                 if (int(newk1 * 2) % 2 == 1) {
+                    // newk1 is going to be contracted
                     r = ResultEdge::zero;
                     ResultEdge etemp{};
+                    // r <- \sum_k cont(F_{x=k}, G, var/{x})
                     for (int k = 0; k < x.p->e.size(); ++k) {
                         e1 = x.p->e[k];
                         e2 = yCopy;
@@ -978,6 +1025,8 @@ namespace dd {
                         }
                     }
                 } else {
+                    // newk1 is not going to be contracted, compute outer product (create a new node)
+                    // qubit case: v.low <- L, v.high <- H
                     std::vector<ResultEdge> e;
                     for (int k = 0; k < x.p->e.size(); ++k) {
                         e1 = x.p->e[k];
@@ -1015,7 +1064,7 @@ namespace dd {
                     r = makeDDNode(Qubit(newk2), e, true);
                 }
 
-            } else {
+            } else { // newk1 == newk2
                 if (int(newk2 * 2) % 2 == 1) {
                     r = ResultEdge::zero;
                     ResultEdge etemp{};
@@ -1047,6 +1096,7 @@ namespace dd {
 
             contTable.insert(xCopy, yCopy, {r.p, r.w}, temp_key_2_new_key1, temp_key_2_new_key2, var_num);
 
+            // r.w <- r.w * x.w * y.w
             if (!r.w.exactlyZero() && (x.w.exactlyOne() || !y.w.exactlyZero())) {
                 if (r.w.exactlyOne()) {
                     r.w = cn.mulCached(x.w, y.w);
@@ -1063,8 +1113,6 @@ namespace dd {
             return r;
 
         }
-
-        //==========================================我写的========================================
 
 
     public:
