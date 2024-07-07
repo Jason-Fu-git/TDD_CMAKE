@@ -1,0 +1,187 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"code/deps/xtensor/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 261,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 280,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 283,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 290,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 327,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "include/xtensor",
+			"paths" : 
+			[
+				"code/deps/xtensor/include/xtensor/xaccessible.hpp",
+				"code/deps/xtensor/include/xtensor/xaccumulator.hpp",
+				"code/deps/xtensor/include/xtensor/xadapt.hpp",
+				"code/deps/xtensor/include/xtensor/xarray.hpp",
+				"code/deps/xtensor/include/xtensor/xassign.hpp",
+				"code/deps/xtensor/include/xtensor/xaxis_iterator.hpp",
+				"code/deps/xtensor/include/xtensor/xaxis_slice_iterator.hpp",
+				"code/deps/xtensor/include/xtensor/xblockwise_reducer.hpp",
+				"code/deps/xtensor/include/xtensor/xblockwise_reducer_functors.hpp",
+				"code/deps/xtensor/include/xtensor/xbroadcast.hpp",
+				"code/deps/xtensor/include/xtensor/xbuffer_adaptor.hpp",
+				"code/deps/xtensor/include/xtensor/xbuilder.hpp",
+				"code/deps/xtensor/include/xtensor/xchunked_array.hpp",
+				"code/deps/xtensor/include/xtensor/xchunked_assign.hpp",
+				"code/deps/xtensor/include/xtensor/xchunked_view.hpp",
+				"code/deps/xtensor/include/xtensor/xcomplex.hpp",
+				"code/deps/xtensor/include/xtensor/xcontainer.hpp",
+				"code/deps/xtensor/include/xtensor/xcsv.hpp",
+				"code/deps/xtensor/include/xtensor/xdynamic_view.hpp",
+				"code/deps/xtensor/include/xtensor/xeval.hpp",
+				"code/deps/xtensor/include/xtensor/xexception.hpp",
+				"code/deps/xtensor/include/xtensor/xexpression.hpp",
+				"code/deps/xtensor/include/xtensor/xexpression_holder.hpp",
+				"code/deps/xtensor/include/xtensor/xexpression_traits.hpp",
+				"code/deps/xtensor/include/xtensor/xfixed.hpp",
+				"code/deps/xtensor/include/xtensor/xfunction.hpp",
+				"code/deps/xtensor/include/xtensor/xfunctor_view.hpp",
+				"code/deps/xtensor/include/xtensor/xgenerator.hpp",
+				"code/deps/xtensor/include/xtensor/xhistogram.hpp",
+				"code/deps/xtensor/include/xtensor/xindex_view.hpp",
+				"code/deps/xtensor/include/xtensor/xinfo.hpp",
+				"code/deps/xtensor/include/xtensor/xio.hpp",
+				"code/deps/xtensor/include/xtensor/xiterable.hpp",
+				"code/deps/xtensor/include/xtensor/xiterator.hpp",
+				"code/deps/xtensor/include/xtensor/xjson.hpp",
+				"code/deps/xtensor/include/xtensor/xlayout.hpp",
+				"code/deps/xtensor/include/xtensor/xmanipulation.hpp",
+				"code/deps/xtensor/include/xtensor/xmasked_view.hpp",
+				"code/deps/xtensor/include/xtensor/xmath.hpp",
+				"code/deps/xtensor/include/xtensor/xmime.hpp",
+				"code/deps/xtensor/include/xtensor/xmultiindex_iterator.hpp",
+				"code/deps/xtensor/include/xtensor/xnoalias.hpp",
+				"code/deps/xtensor/include/xtensor/xnorm.hpp",
+				"code/deps/xtensor/include/xtensor/xnpy.hpp",
+				"code/deps/xtensor/include/xtensor/xoffset_view.hpp",
+				"code/deps/xtensor/include/xtensor/xoperation.hpp",
+				"code/deps/xtensor/include/xtensor/xoptional.hpp",
+				"code/deps/xtensor/include/xtensor/xoptional_assembly.hpp",
+				"code/deps/xtensor/include/xtensor/xoptional_assembly_base.hpp",
+				"code/deps/xtensor/include/xtensor/xoptional_assembly_storage.hpp",
+				"code/deps/xtensor/include/xtensor/xpad.hpp",
+				"code/deps/xtensor/include/xtensor/xrandom.hpp",
+				"code/deps/xtensor/include/xtensor/xreducer.hpp",
+				"code/deps/xtensor/include/xtensor/xrepeat.hpp",
+				"code/deps/xtensor/include/xtensor/xscalar.hpp",
+				"code/deps/xtensor/include/xtensor/xsemantic.hpp",
+				"code/deps/xtensor/include/xtensor/xset_operation.hpp",
+				"code/deps/xtensor/include/xtensor/xshape.hpp",
+				"code/deps/xtensor/include/xtensor/xslice.hpp",
+				"code/deps/xtensor/include/xtensor/xsort.hpp",
+				"code/deps/xtensor/include/xtensor/xstorage.hpp",
+				"code/deps/xtensor/include/xtensor/xstrided_view.hpp",
+				"code/deps/xtensor/include/xtensor/xstrided_view_base.hpp",
+				"code/deps/xtensor/include/xtensor/xstrides.hpp",
+				"code/deps/xtensor/include/xtensor/xtensor.hpp",
+				"code/deps/xtensor/include/xtensor/xtensor_config.hpp",
+				"code/deps/xtensor/include/xtensor/xtensor_forward.hpp",
+				"code/deps/xtensor/include/xtensor/xtensor_simd.hpp",
+				"code/deps/xtensor/include/xtensor/xutils.hpp",
+				"code/deps/xtensor/include/xtensor/xvectorize.hpp",
+				"code/deps/xtensor/include/xtensor/xview.hpp",
+				"code/deps/xtensor/include/xtensor/xview_utils.hpp"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"destination" : "share/cmake/xtensor",
+			"paths" : 
+			[
+				"cmake-build-debug-mingw/code/deps/xtensor/xtensorConfig.cmake",
+				"cmake-build-debug-mingw/code/deps/xtensor/xtensorConfigVersion.cmake"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 3,
+			"component" : "Unspecified",
+			"destination" : "share/cmake/xtensor",
+			"exportName" : "xtensor-targets",
+			"exportTargets" : 
+			[
+				{
+					"id" : "xtensor::@e42ddcc45a9b9df6fd00",
+					"index" : 0
+				}
+			],
+			"paths" : 
+			[
+				"code/deps/xtensor/CMakeFiles/Export/0f2a327e949144b0b747c96acb1eb12f/xtensorTargets.cmake"
+			],
+			"type" : "export"
+		},
+		{
+			"backtrace" : 4,
+			"component" : "Unspecified",
+			"destination" : "share/pkgconfig",
+			"paths" : 
+			[
+				"cmake-build-debug-mingw/code/deps/xtensor/xtensor.pc"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 5,
+			"component" : "Unspecified",
+			"destination" : "include",
+			"paths" : 
+			[
+				"cmake-build-debug-mingw/xtensor.hpp"
+			],
+			"type" : "file"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "code/deps/xtensor",
+		"source" : "code/deps/xtensor"
+	}
+}
