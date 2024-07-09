@@ -37,8 +37,8 @@ namespace dd {
     struct key_2_new_key_node {
         short level;
         float new_key;
-        std::map<float, key_2_new_key_node*> next;
-        key_2_new_key_node* father;
+        std::map<float, key_2_new_key_node *> next;
+        key_2_new_key_node *father;
     };
 
 }

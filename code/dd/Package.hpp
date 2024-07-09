@@ -56,6 +56,7 @@ namespace dd {
 
     /**
      * Packs basic TDD operations, like generation, normalization, addition and contraction.
+     * Memory use will also be handled here.
      *
      */
     template<class Config>

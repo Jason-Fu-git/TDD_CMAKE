@@ -3,3 +3,4 @@ cmake-build-debug-mingw/
 .vs/
 x64/
 */x64/
+build/

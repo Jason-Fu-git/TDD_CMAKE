@@ -17,11 +17,11 @@ namespace dd {
      */
     struct Tensor {
 
-        xt::xarray<ComplexValue> data;
+        xt::xarray <ComplexValue> data;
 
         std::vector<Index> index_set;
 
-        std::string name=NULL;
+        std::string name = NULL;
 
     };
 
