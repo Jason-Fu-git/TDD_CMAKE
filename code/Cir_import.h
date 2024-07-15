@@ -8,6 +8,8 @@
 
 #include "dd/Package.hpp"
 #include "dd/Export.hpp"
+#include "dd/ContractionTree.hpp"
+#include "dd/ContractionOptimizer.hpp"
 
 #include <unordered_set>
 #include <vector>
@@ -34,12 +36,6 @@ constexpr long double PI = 3.14159265358979323846264338327950288419716939937510L
 
 bool release = true;
 bool get_max_node = true;
-
-struct gate {
-    std::string name;
-    short int qubits[2];
-    //std::vector<dd::Index> index_set;
-};
 
 int qubits_num = 0;
 int gates_num = 0;
@@ -535,6 +531,8 @@ dd::TDD apply(dd::TDD tdd, std::string nam, std::vector<dd::Index> index_set, st
     return tdd;
 }
 
+// order : x000 - x001 - ... - y0
+//         x100 - x101 - ... - y1
 std::map<std::string, int> get_var_order() {
 
     std::map<std::string, int> var;
@@ -604,7 +602,9 @@ int *Simulate_with_partition1(std::string path, std::string file_name, std::uniq
     if (release) {
         dd->incRef(tdd.e);
     }
+
     start = clock();
+
     int node_num_max = 0;
     for (int k = 0; k < par.size(); k++) {
         //std::cout << "block:" << k << std::endl;
@@ -659,6 +659,9 @@ int *Simulate_with_partition1(std::string path, std::string file_name, std::uniq
         dd->decRef(tdd.e);
     }
     dd->garbageCollect();
+
+    finish = clock();
+    std::cout << "Contraction Time: " << (double) (finish - start) / CLOCKS_PER_SEC << " s" << std::endl;
 
     std::cout << "Done!!!" << std::endl;
     return nodes;
@@ -769,8 +772,55 @@ int *Simulate_with_partition2(std::string path, std::string file_name, std::uniq
     }
     dd->garbageCollect();
 
+    finish = clock();
+    std::cout << "Contraction Time: " << (double) (finish - start) / CLOCKS_PER_SEC << " s" << std::endl;
+
     std::cout << "Done!!!" << std::endl;
     return nodes;
+}
+
+/**
+ * Simulate the circuit with contraction optimizer specified by method.
+ * @return a size-2 array. The first element is the maximum number of nodes in the TDD during the simulation,
+ * and the second element is the final number of nodes in the TDD.
+ * @author Jason Fu
+ */
+int *Simulate_with_ContractionOptimizer(std::string path, std::string file_name, std::unique_ptr<dd::Package<>> &dd,
+                                        int method) {
+    // import and preprocess the circuit
+    std::map<int, gate> gate_set = import_circuit(path + file_name);
+
+    std::map<std::string, int> var;
+
+    var = get_var_order();
+
+    std::map<int, std::vector<dd::Index>> Index_set = get_index(gate_set, var);
+
+    dd->varOrder = var;
+
+    auto start_optimize = clock();
+
+    // perform optimization
+    ExhaustiveSearchOptimizer optimizer(qubits_num, &gate_set, &Index_set);
+    auto tree = optimizer.optimize();
+
+    auto end_optimize = clock();
+    std::cout << "Optimization time: " << (double) (end_optimize - start_optimize) / CLOCKS_PER_SEC << " s" << std::endl;
+
+    auto start_simulate = clock();
+
+    // perform contraction
+    auto result = optimizer.contract(tree, dd, release);
+
+    auto end_simulate = clock();
+    std::cout << "Contraction time: " << (double) (end_simulate - start_simulate) / CLOCKS_PER_SEC << " s" << std::endl;
+
+
+    // delete the tree
+    delete tree;
+    std::cout << "Done!!!" << std::endl;
+
+    return result;
 }
 
 
@@ -909,6 +959,9 @@ int *Simulate_with_tdd(std::string path, std::string file_name, std::unique_ptr<
         dd->decRef(tdd.e);
     }
     dd->garbageCollect();
+
+    finish = clock();
+    std::cout << "Contraction Time: " << (double) (finish - start) / CLOCKS_PER_SEC << " s" << std::endl;
 
     std::cout << "Done!!!" << std::endl;
     return nodes;

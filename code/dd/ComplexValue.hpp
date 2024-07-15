@@ -144,15 +144,15 @@ namespace dd {
                 const std::string sign = std::signbit(num) ? "-" : (imaginary ? "+" : "");
 
                 if (fraction.first == 1U && fraction.second == 1U) {
-                    os << sign << (imaginary ? "i" : "1") << "/√2";
+                    os << sign << (imaginary ? "i" : "1") << "/sqrt 2";
                 } else if (fraction.second == 1U) {
-                    os << sign << fraction.first << (imaginary ? "i" : "") << "/√2";
+                    os << sign << fraction.first << (imaginary ? "i" : "") << "/sqrt 2";
                 } else if (fraction.first == 1U) {
                     os << sign << (imaginary ? "i" : "1") << "/(" << fraction.second
-                       << "√2)";
+                       << "sqrt 2)";
                 } else {
                     os << sign << fraction.first << (imaginary ? "i" : "") << "/("
-                       << fraction.second << "√2)";
+                       << fraction.second << "sqrt 2)";
                 }
                 return;
             }

@@ -50,6 +50,8 @@ set(TDD_C_INCLUDES
         code/Permutation.hpp
         code/QuantumComputation.hpp
         code/Cir_import.h
+        code/dd/ContractionTree.hpp
+        code/dd/ContractionOptimizer.hpp
 )
 
 set(TDD_C_SOURCES
@@ -71,7 +73,8 @@ set(TDD_C_SOURCES
         code/CircuitOptimizer.cpp
         code/main.cpp
         code/QuantumComputation.cpp
-        )
+        code/dd/ContractionOptimizer.cpp
+)
 
 add_executable(${PROJECT_NAME} ${TDD_C_SOURCES} ${TDD_C_INCLUDES})
 

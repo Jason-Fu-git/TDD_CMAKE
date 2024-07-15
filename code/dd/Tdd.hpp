@@ -19,6 +19,30 @@ namespace dd {
         short idx;
     };
 
+    inline bool operator==(const Index &lhs, const Index &rhs) {
+        return lhs.idx == rhs.idx && lhs.key == rhs.key;
+    }
+
+    inline bool operator!=(const Index &lhs, const Index &rhs) {
+        return !(lhs == rhs);
+    }
+
+    inline bool operator<(const Index &lhs, const Index &rhs) {
+        return lhs.key < rhs.key || (lhs.key == rhs.key && lhs.idx < rhs.idx);
+    }
+
+    inline bool operator<=(const Index &lhs, const Index &rhs) {
+        return lhs < rhs || lhs == rhs;
+    }
+
+    inline bool operator>(const Index &lhs, const Index &rhs) {
+        return !(lhs <= rhs);
+    }
+
+    inline bool operator>=(const Index &lhs, const Index &rhs) {
+        return !(lhs < rhs);
+    }
+
     /**
      * @brief Tensor Decision Diagram
      * @var e - The root edge for the TDD.
