@@ -194,9 +194,6 @@ ContractionTree *ExhaustiveSearchOptimizer::optimize() {
         leaves.push_back(i);
     }
     auto tr = findOptimalPartition(leaves, std::numeric_limits<unsigned long long>::max());
-    std::cout << "Exhaustive Search Optimizer: " << std::endl;
-    std::cout << "Optimal cost: " << tr->getCost() << std::endl;
-    std::cout << "Optimal contraction tree size: " << tr->getSize() << std::endl;
     return tr;
 }
 
@@ -316,3 +313,213 @@ void ExhaustiveSearchOptimizer::dumpDPTable(std::vector<int> &nodeIdxs, Contract
     dp_table[key] = result;
 }
 
+// ==============
+// Partition Scheme 1
+// ==============
+
+// copied from Cir_import.h
+ContractionTree *PartitionScheme1Optimizer::optimize() {
+    auto gateSet = *gate_set;
+    // perform partition
+    // @var par : block index -> block gate map f, f(0) contains up part gates, f(1) contains down part gates.
+    // Note all the gates are indices in the `gate_set`.
+    std::map<int, std::map<int, std::vector<int>>> par;
+    int cx_cut = 0;
+    int block = 0;
+    int gates_num = (int) gateSet.size();
+    for (int k = 0; k < gates_num; k++) {
+        std::string nam = gateSet[k].name;
+        if (nam != "cx") {
+            if (gateSet[k].qubits[0] <= qubits_num / 2) {
+                // up part
+                par[block][0].push_back(k);
+            } else {
+                // down part
+                par[block][1].push_back(k);
+            }
+        } else {
+            if (gateSet[k].qubits[0] <= qubits_num / 2 && gateSet[k].qubits[1] <= qubits_num / 2) {
+                par[block][0].push_back(k);
+            } else if (gateSet[k].qubits[0] > qubits_num / 2 && gateSet[k].qubits[1] > qubits_num / 2) {
+                par[block][1].push_back(k);
+            } else {
+                // CNOT across the cut
+                if (cx_cut <= max_cx_cut) {
+                    if (gateSet[k].qubits[1] > qubits_num / 2) {
+                        par[block][1].push_back(k);
+                    } else {
+                        par[block][0].push_back(k);
+                    }
+                    cx_cut += 1;
+                } else {
+                    block += 1;
+                    cx_cut = 1;
+                    if (gateSet[k].qubits[1] > qubits_num / 2) {
+                        par[block][1].push_back(k);
+                    } else {
+                        par[block][0].push_back(k);
+                    }
+                }
+            }
+        }
+    }
+    // construct tree
+    auto *tr = new ContractionTree(index_width);
+    // iterate through each vertical cut
+    Node *root = nullptr;
+    for (auto &i: par) {
+        auto block_gates = i.second;
+        Node *vBlock_node = nullptr;
+        // iterate through each horizontal cut
+        for (auto &j: block_gates) {
+            auto gates = j.second;
+            // contract these gates
+            Node *hBlock_node = nullptr;
+            for (auto &g: gates) {
+                auto gate = gateSet[g];
+                auto indexSet = (*index_set)[g];
+                auto node = tr->constructNode(indexSet, g);
+                if (hBlock_node == nullptr) {
+                    hBlock_node = node;
+                } else {
+                    hBlock_node = tr->constructParent(node, hBlock_node);
+                }
+            }
+            // contract horizontal cuts
+            if (vBlock_node == nullptr) {
+                vBlock_node = hBlock_node;
+            } else {
+                vBlock_node = tr->constructParent(hBlock_node, vBlock_node);
+            }
+        }
+        // contract vertical cuts
+        if (root == nullptr) {
+            root = vBlock_node;
+        } else {
+            root = tr->constructParent(vBlock_node, root);
+        }
+    }
+    tr->getRoot() = root;
+    return tr;
+}
+
+ContractionTree *PartitionScheme2Optimizer::optimize() {
+    auto gateSet = *gate_set;
+    // perform partitioning
+    // @var par : block index -> block gate map f, f(0) contains up part gates, f(1) contains down part gates, and f(2)
+    // contains the small block.
+    // Note all the gates are indices in the `gate_set`.
+    std::map<int, std::map<int, std::vector<int>>> par;
+    int cx_cut = 0;
+    int block = 0;
+    int c_part_min = qubits_num / 2;
+    int c_part_max = qubits_num / 2;
+    for (int k = 0; k < gateSet.size(); k++) {
+        std::string nam = gateSet[k].name;
+
+        if (cx_cut <= cx_cut_max) {
+
+            if (nam != "cx") {
+                if (gateSet[k].qubits[0] <= qubits_num / 2) {
+                    par[block][0].push_back(k);
+                } else {
+                    par[block][1].push_back(k);
+                }
+            } else {
+                if (gateSet[k].qubits[0] <= qubits_num / 2 && gateSet[k].qubits[1] <= qubits_num / 2) {
+                    par[block][0].push_back(k);
+                } else if (gateSet[k].qubits[0] > qubits_num / 2 && gateSet[k].qubits[1] > qubits_num / 2) {
+                    par[block][1].push_back(k);
+                } else {
+                    if (gateSet[k].qubits[1] > qubits_num / 2) {
+                        par[block][1].push_back(k);
+                    } else {
+                        par[block][0].push_back(k);
+                    }
+                    cx_cut += 1;
+                }
+            }
+        } else {
+            if (nam != "cx") {
+                if (gateSet[k].qubits[0] < c_part_min) {
+                    par[block][0].push_back(k);
+                } else if (gateSet[k].qubits[0] > c_part_max) {
+                    par[block][1].push_back(k);
+                } else {
+                    par[block][2].push_back(k);
+                }
+            } else if (gateSet[k].qubits[0] >= c_part_min && gateSet[k].qubits[0] <= c_part_max &&
+                       gateSet[k].qubits[1] >= c_part_min && gateSet[k].qubits[1] <= c_part_max) {
+                par[block][2].push_back(k);
+            } else if (gateSet[k].qubits[0] < c_part_min && gateSet[k].qubits[1] < c_part_min) {
+                par[block][0].push_back(k);
+            } else if (gateSet[k].qubits[0] > c_part_max && gateSet[k].qubits[1] > c_part_max) {
+                par[block][1].push_back(k);
+            } else {
+                // CNOT gate across c_part_min or c_part_max
+                int temp_c_min = std::min(c_part_min, (int)std::min(gateSet[k].qubits[0], gateSet[k].qubits[1]));
+                int temp_c_max = std::max(c_part_max, (int)std::max(gateSet[k].qubits[0], gateSet[k].qubits[1]));
+                if ((temp_c_max - temp_c_min) > c_part_width) {
+                    block += 1;
+                    cx_cut = 0;
+                    c_part_min = qubits_num / 2;
+                    c_part_max = qubits_num / 2;
+                    if (gateSet[k].qubits[0] <= qubits_num / 2 && gateSet[k].qubits[1] <= qubits_num / 2) {
+                        par[block][0].push_back(k);
+                    } else if (gateSet[k].qubits[0] > qubits_num / 2 && gateSet[k].qubits[1] > qubits_num / 2) {
+                        par[block][1].push_back(k);
+                    } else {
+                        if (gateSet[k].qubits[1] > qubits_num / 2) {
+                            par[block][1].push_back(k);
+                        } else {
+                            par[block][0].push_back(k);
+                        }
+                        cx_cut += 1;
+                    }
+                } else {
+                    par[block][2].push_back(k);
+                    c_part_min = temp_c_min;
+                    c_part_max = temp_c_max;
+                }
+            }
+        }
+    }
+    // construct tree
+    auto *tr = new ContractionTree(index_width);
+    // iterate through each vertical cut
+    Node *root = nullptr;
+    for (auto &i: par) {
+        auto block_gates = i.second;
+        Node *vBlock_node = nullptr;
+        // iterate through each horizontal cut
+        for (auto &j: block_gates) {
+            auto gates = j.second;
+            // contract these gates
+            Node *hBlock_node = nullptr;
+            for (auto &g: gates) {
+                auto gate = gateSet[g];
+                auto indexSet = (*index_set)[g];
+                auto node = tr->constructNode(indexSet, g);
+                if (hBlock_node == nullptr) {
+                    hBlock_node = node;
+                } else {
+                    hBlock_node = tr->constructParent(node, hBlock_node);
+                }
+            }
+            // contract horizontal cuts
+            if (vBlock_node == nullptr) {
+                vBlock_node = hBlock_node;
+            } else {
+                vBlock_node = tr->constructParent(hBlock_node, vBlock_node);
+            }
+        }
+        // contract vertical cuts
+        if (root == nullptr) {
+            root = vBlock_node;
+        } else {
+            root = tr->constructParent(vBlock_node, root);
+        }
+    }
+    tr->getRoot() = root;
+    return tr;
+}

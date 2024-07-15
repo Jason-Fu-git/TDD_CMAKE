@@ -27,6 +27,12 @@
 #include <ctime>
 #include <cmath>
 
+enum OptimizingMethod {
+    EXHAUSTIVE_SEARCH,
+    PARTITION_1,
+    PARTITION_2,
+};
+
 
 using namespace std;
 
@@ -801,23 +807,45 @@ int *Simulate_with_ContractionOptimizer(std::string path, std::string file_name,
     auto start_optimize = clock();
 
     // perform optimization
-    ExhaustiveSearchOptimizer optimizer(qubits_num, &gate_set, &Index_set);
-    auto tree = optimizer.optimize();
+    ContractionTree *tree = nullptr;
+    ContractionOptimizer *optimizer = nullptr;
+
+    if (method == OptimizingMethod::EXHAUSTIVE_SEARCH) {
+        optimizer = new ExhaustiveSearchOptimizer(qubits_num, &gate_set, &Index_set);
+        tree = optimizer->optimize();
+    } else if (method == OptimizingMethod::PARTITION_1) {
+        int cx_cut_max = qubits_num / 2 + 1;
+        optimizer = new PartitionScheme1Optimizer(qubits_num, &gate_set, &Index_set, cx_cut_max);
+        tree = optimizer->optimize();
+    } else if (method == OptimizingMethod::PARTITION_2) {
+        int cx_cut_max = qubits_num / 2 + 1;
+        int c_part_width = qubits_num / 2;
+        optimizer = new PartitionScheme2Optimizer(qubits_num, &gate_set, &Index_set, cx_cut_max, c_part_width);
+        tree = optimizer->optimize();
+    } else {
+        fprintf(stderr, "Unknown optimization method %d\n", method);
+        exit(2);
+    }
+
+    std::cout << "Contraction cost: " << tree->getCost() << std::endl;
+    std::cout << "Tree size: " << tree->getSize() << std::endl;
 
     auto end_optimize = clock();
-    std::cout << "Optimization time: " << (double) (end_optimize - start_optimize) / CLOCKS_PER_SEC << " s" << std::endl;
+    std::cout << "Optimization time: " << (double) (end_optimize - start_optimize) / CLOCKS_PER_SEC << " s"
+              << std::endl;
 
     auto start_simulate = clock();
 
     // perform contraction
-    auto result = optimizer.contract(tree, dd, release);
+    auto result = optimizer->contract(tree, dd, release);
 
     auto end_simulate = clock();
     std::cout << "Contraction time: " << (double) (end_simulate - start_simulate) / CLOCKS_PER_SEC << " s" << std::endl;
 
 
-    // delete the tree
+    // delete the pointers
     delete tree;
+    delete optimizer;
     std::cout << "Done!!!" << std::endl;
 
     return result;

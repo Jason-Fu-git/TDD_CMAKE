@@ -58,6 +58,10 @@ public:
             }
         }
 
+        explicit Node(const std::vector<Index> &idxSet, int _gate_idx = -1) :
+                parent(nullptr), lc(nullptr), rc(nullptr), cost(0), gate_idx(_gate_idx),
+                indexes(idxSet.begin(), idxSet.end()) {}
+
         Node(const Node &n) : parent(n.parent), lc(n.lc), rc(n.rc), indexes(n.indexes), cost(n.cost),
                               gate_idx(n.gate_idx) {}
 
@@ -105,6 +109,10 @@ public:
         return size;
     }
 
+    /**
+     *  Get the total contraction cost
+     *  @note The cost is calculated based on typical matrix representation, not on exact tdd operation count!
+     */
     unsigned long long getCost() {
         return root->cost;
     }
@@ -115,6 +123,12 @@ public:
      * Construct a node using Node's default constructor
      */
     Node *constructNode(std::set<dd::Index> *idxSet, int _gate_idx = -1) {
+        Node *node = new Node(idxSet, _gate_idx);
+        ++size;
+        return node;
+    }
+
+    Node *constructNode(const std::vector<Index> idxSet, int _gate_idx = -1) {
         Node *node = new Node(idxSet, _gate_idx);
         ++size;
         return node;
@@ -144,7 +158,7 @@ public:
             Node *parent = new Node(nullptr);
             // construct the index set for the parent node
             int commonIdxNum = 0;
-            for (const auto& index: lc->indexes) {
+            for (const auto &index: lc->indexes) {
                 if (rc->indexes.find(index) == rc->indexes.end()) {
                     parent->indexes.insert(index);
                 } else {
@@ -152,16 +166,14 @@ public:
                     ++commonIdxNum;
                 }
             }
-            for (const auto& index: rc->indexes) {
+            for (const auto &index: rc->indexes) {
                 if (lc->indexes.find(index) == lc->indexes.end()) {
                     parent->indexes.insert(index);
-                } else {
-                    // the index will get contracted
-                    ++commonIdxNum;
                 }
             }
             // perform the cost calculation
-            unsigned long long cost = lc->cost + rc->cost + std::pow(index_width, parent->indexes.size() + commonIdxNum);
+            unsigned long long cost =
+                    lc->cost + rc->cost + std::pow(index_width, parent->indexes.size() + commonIdxNum);
             parent->cost = cost;
             // link the parent node to its children
             parent->lc = lc;
@@ -201,7 +213,7 @@ public:
         std::vector<Index> idxSet;
         int commonIdxNum = 0;
         // iterate through t1's indexes
-        for (const auto& index: t1->getRoot()->indexes) {
+        for (const auto &index: t1->getRoot()->indexes) {
             if (t2->getRoot()->indexes.find(index)
                 == t2->getRoot()->indexes.end()) {
                 idxSet.push_back(index);
@@ -211,13 +223,10 @@ public:
             }
         }
         // iterate through t2's indexes
-        for (const auto& index: t2->getRoot()->indexes) {
+        for (const auto &index: t2->getRoot()->indexes) {
             if (t1->getRoot()->indexes.find(index)
                 == t1->getRoot()->indexes.end()) {
                 idxSet.push_back(index);
-            } else {
-                // the index will get contracted
-                ++commonIdxNum;
             }
         }
         // perform the cost calculation

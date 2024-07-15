@@ -67,9 +67,27 @@ int main(int argc, char *argv[]) {
 
     std::cout << "File name:" << file_name << std::endl;
     auto dd4 = std::make_unique<dd::Package<>>(3 * n);
-    nodes = Simulate_with_ContractionOptimizer(path2, file_name, dd3, 0);
+    nodes = Simulate_with_ContractionOptimizer(path2, file_name, dd4, OptimizingMethod::EXHAUSTIVE_SEARCH);
 
     std::cout << "Exhaustive Search" << std::endl;
+    std::cout << "Nodes max:" << *nodes << std::endl;
+    std::cout << "Nodes Final:" << *(nodes + 1) << std::endl;
+    std::cout << "===================================" << std::endl;
+
+    std::cout << "File name:" << file_name << std::endl;
+    auto dd5 = std::make_unique<dd::Package<>>(3 * n);
+    nodes = Simulate_with_ContractionOptimizer(path2, file_name, dd5, OptimizingMethod::PARTITION_1);
+
+    std::cout << "Partition Scheme 1" << std::endl;
+    std::cout << "Nodes max:" << *nodes << std::endl;
+    std::cout << "Nodes Final:" << *(nodes + 1) << std::endl;
+    std::cout << "===================================" << std::endl;
+
+    std::cout << "File name:" << file_name << std::endl;
+    auto dd6 = std::make_unique<dd::Package<>>(3 * n);
+    nodes = Simulate_with_ContractionOptimizer(path2, file_name, dd6, OptimizingMethod::PARTITION_2);
+
+    std::cout << "Partition Scheme 2" << std::endl;
     std::cout << "Nodes max:" << *nodes << std::endl;
     std::cout << "Nodes Final:" << *(nodes + 1) << std::endl;
     std::cout << "===================================" << std::endl;

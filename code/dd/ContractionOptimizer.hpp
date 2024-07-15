@@ -33,7 +33,7 @@ public:
      * @author Jason Fu
      */
     explicit ContractionOptimizer(int num_qubits, GateSet *gates, IndexSet *indexes, int _index_width = 2)
-            : qubit_num(num_qubits), gate_set(gates), index_set(indexes), index_width(_index_width) {}
+            : qubits_num(num_qubits), gate_set(gates), index_set(indexes), index_width(_index_width) {}
 
     virtual ~ContractionOptimizer() = default;
 
@@ -81,7 +81,7 @@ protected:
 
     static std::vector<std::string> split(const std::string &s, const std::string &seperator);
 
-    int qubit_num;
+    int qubits_num;
     int index_width;
     GateSet *gate_set;
     IndexSet *index_set;
@@ -96,13 +96,14 @@ protected:
  */
 class ExhaustiveSearchOptimizer : public ContractionOptimizer {
 public:
-    explicit ExhaustiveSearchOptimizer(int num_qubits, GateSet *gates, IndexSet *indexes) : ContractionOptimizer(
-            num_qubits, gates, indexes) {
+    explicit ExhaustiveSearchOptimizer(int num_qubits, GateSet *gates, IndexSet *indexes, int _index_width = 2)
+            : ContractionOptimizer(
+            num_qubits, gates, indexes, _index_width) {
         // construct a leaf node for all the gates in the gate set
         for (int i = 0; i < gate_set->size(); i++) {
             auto idxVec = index_set->at(i);
             auto *idxSet = new std::set<Index>();
-            for(auto &idx: idxVec){
+            for (auto &idx: idxVec) {
                 idxSet->insert(idx);
             }
             auto node = new Node(idxSet, i);
@@ -138,6 +139,50 @@ private:
     std::vector<Node *> node_set;
 };
 
+/**
+ * Partition scheme 1 : Horizontally split the circuit. Introduce a vertical cut until the horizontal cut
+ * of CNOTs has reached cx_cut_max.
+ * @note This partition scheme does not cut the CNOTs. It puts the entire CNOT into one block instead.
+ * @see https://arxiv.org/abs/2009.02618
+ * @author Jason Fu
+ */
+class PartitionScheme1Optimizer : public ContractionOptimizer {
+public:
+    explicit PartitionScheme1Optimizer(int num_qubits, GateSet *gates, IndexSet *indexes, int cx_cut_max,
+                                       int _index_width = 2)
+            : ContractionOptimizer(num_qubits, gates, indexes, _index_width), max_cx_cut(cx_cut_max) {}
+
+    ~PartitionScheme1Optimizer() override = default;
+
+    ContractionTree *optimize() override;
+
+private:
+    int max_cx_cut;
+};
+
+/**
+ * Partition scheme 2 : Horizontally split the circuit. When the number of CNOTs across the cut reaches cx_cut_max,
+ * introduce a small block to contain the following CNOTs. When the width of the block reaches c_part_width,
+ * introduce a vertical cut.
+ * @note This partition scheme does not cut the CNOTs. It puts the entire CNOT into one block instead.
+ * @see https://arxiv.org/abs/2009.02618
+ * @author Jason Fu
+ */
+class PartitionScheme2Optimizer : public ContractionOptimizer {
+public:
+    explicit PartitionScheme2Optimizer(int num_qubits, GateSet *gates, IndexSet *indexes,
+                                       int cx_cut_max, int c_part_width, int _index_width = 2)
+            : ContractionOptimizer(num_qubits, gates, indexes, _index_width),
+              cx_cut_max(cx_cut_max), c_part_width(c_part_width)  {}
+
+    ~PartitionScheme2Optimizer() override = default;
+
+    ContractionTree *optimize() override;
+
+private:
+    int cx_cut_max;
+    int c_part_width;
+};
 
 
 #endif //TDD_C_CONTRACTIONOPTIMIZER_HPP
