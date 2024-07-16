@@ -52,6 +52,7 @@ set(TDD_C_INCLUDES
         code/Cir_import.h
         code/dd/ContractionTree.hpp
         code/dd/ContractionOptimizer.hpp
+        code/dd/Graph.hpp
 )
 
 set(TDD_C_SOURCES

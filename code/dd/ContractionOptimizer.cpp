@@ -224,6 +224,7 @@ ContractionTree *ExhaustiveSearchOptimizer::findOptimalPartition(std::vector<int
         // perform partition
         unsigned long long best_cost = minCost;
         ContractionTree *mLc = nullptr, *mRc = nullptr;
+        // todo : not necessarily even partition
         int lvSize = (int) nodeIdxs.size() / 2;
         std::vector<bool> mask;
         std::vector<int> stack;
@@ -457,8 +458,8 @@ ContractionTree *PartitionScheme2Optimizer::optimize() {
                 par[block][1].push_back(k);
             } else {
                 // CNOT gate across c_part_min or c_part_max
-                int temp_c_min = std::min(c_part_min, (int)std::min(gateSet[k].qubits[0], gateSet[k].qubits[1]));
-                int temp_c_max = std::max(c_part_max, (int)std::max(gateSet[k].qubits[0], gateSet[k].qubits[1]));
+                int temp_c_min = std::min(c_part_min, (int) std::min(gateSet[k].qubits[0], gateSet[k].qubits[1]));
+                int temp_c_max = std::max(c_part_max, (int) std::max(gateSet[k].qubits[0], gateSet[k].qubits[1]));
                 if ((temp_c_max - temp_c_min) > c_part_width) {
                     block += 1;
                     cx_cut = 0;
@@ -522,4 +523,73 @@ ContractionTree *PartitionScheme2Optimizer::optimize() {
     }
     tr->getRoot() = root;
     return tr;
+}
+
+// ==================================================
+// GNCommunityOptimizer
+// ==================================================
+
+ContractionTree *GNCommunityOptimizer::optimize() {
+    // convert the circuit to a graph
+    Graph *graph = constructGraph();
+    // perform GN algorithm to find communities
+    auto edgeOrder = graph->girvanNewman();
+    // build a contraction tree based on the order
+    auto *tr = buildTreeFromGraph(edgeOrder);
+    delete graph;
+    return tr;
+}
+
+// O(n^2), where n is the number of gates
+Graph *GNCommunityOptimizer::constructGraph() {
+    std::vector<int> data(gate_set->size());
+    for (int i = 0; i < gate_set->size(); i++) {
+        data.push_back(i);
+    }
+    auto *graph = new Graph(data);
+    // iterate through each gate
+    for (int i = 0; i < gate_set->size(); i++) {
+        for (int j = i + 1; j < gate_set->size(); j++) {
+            // find common indexes
+            for (auto &index: (*index_set)[i]) {
+                if (std::find((*index_set)[j].begin(), (*index_set)[j].end(), index) != (*index_set)[j].end()) {
+                    graph->addEdge(i, j);
+                    break;
+                }
+            }
+        }
+    }
+    return graph;
+}
+
+ContractionTree *GNCommunityOptimizer::buildTreeFromGraph(const std::vector<GraphEdge> &edgeOrder) {
+    auto *tr = new ContractionTree(index_width);
+    // first construct gate nodes
+    std::vector<Node *> nodes;
+    std::vector<int> unionFindSet; // unionFind set
+    for (int i = 0; i < gate_set->size(); i++) {
+        auto *node = tr->constructNode(index_set->at(i), i);
+        nodes.push_back(node);
+        unionFindSet.push_back(i);
+    }
+    // then construct contraction tree
+    for (int i = edgeOrder.size() - 1; i >= 0; i--) {
+        auto &edge = edgeOrder[i];
+        auto u = nodes[unionFind(unionFindSet, edge.u)];
+        auto v = nodes[unionFind(unionFindSet, edge.v)];
+        auto p = tr->constructParent(u, v);
+        unionFindSet[edge.u] = edge.v;
+        nodes[unionFind(unionFindSet, edge.v)] = p;
+        // the last node is the root
+        if (i == 0) {
+            tr->getRoot() = p;
+        }
+    }
+    return tr;
+}
+
+int GNCommunityOptimizer::unionFind(const std::vector<int> &unionFindSet, int s) {
+    while (unionFindSet[s] != s)
+        s = unionFindSet[s];
+    return s;
 }

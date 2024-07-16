@@ -31,6 +31,7 @@ enum OptimizingMethod {
     EXHAUSTIVE_SEARCH,
     PARTITION_1,
     PARTITION_2,
+    GN_COMMUNITY,
 };
 
 
@@ -148,6 +149,9 @@ std::map<int, gate> import_circuit(std::string file_name) {
     std::getline(infile, line);
     std::getline(infile, line);
     while (std::getline(infile, line)) {
+        if(line.empty())
+            continue;
+
         gate temp_gate;
 
         vector<std::string> g = split(line, " ");
@@ -822,6 +826,9 @@ int *Simulate_with_ContractionOptimizer(std::string path, std::string file_name,
         int c_part_width = qubits_num / 2;
         optimizer = new PartitionScheme2Optimizer(qubits_num, &gate_set, &Index_set, cx_cut_max, c_part_width);
         tree = optimizer->optimize();
+    } else if (method == OptimizingMethod::GN_COMMUNITY) {
+        optimizer = new GNCommunityOptimizer(qubits_num, &gate_set, &Index_set);
+        tree = optimizer->optimize();
     } else {
         fprintf(stderr, "Unknown optimization method %d\n", method);
         exit(2);
@@ -870,6 +877,9 @@ int get_qubits_num(std::string file_name) {
     std::getline(infile, line);
     std::getline(infile, line);
     while (std::getline(infile, line)) {
+        if (line.empty()) {
+            continue;
+        }
 
         vector<string> g = split(line, " ");
 

@@ -128,7 +128,7 @@ public:
         return node;
     }
 
-    Node *constructNode(const std::vector<Index> idxSet, int _gate_idx = -1) {
+    Node *constructNode(const std::vector<Index> &idxSet, int _gate_idx = -1) {
         Node *node = new Node(idxSet, _gate_idx);
         ++size;
         return node;
@@ -149,7 +149,7 @@ public:
      */
     Node *constructParent(Node *lc, Node *rc) {
         assert(lc || rc);
-        if (!lc) {
+        if (!lc || rc == lc) {
             return rc;
         } else if (!rc) {
             return lc;

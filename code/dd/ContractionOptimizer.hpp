@@ -6,8 +6,10 @@
 #define TDD_C_CONTRACTIONOPTIMIZER_HPP
 
 #include "ContractionTree.hpp"
-#include "dd/Tdd.hpp"
+#include "Tdd.hpp"
+#include "Graph.hpp"
 #include "Package.hpp"
+
 
 
 #include <string>
@@ -19,6 +21,9 @@
 using GateSet = std::map<int, gate>;
 using IndexSet = std::map<int, std::vector<dd::Index>>;
 using Node = ContractionTree::Node;
+using Graph = dd::Graph<int>;
+using GraphNode = dd::Graph<int>::GraphNode;
+using GraphEdge = dd::Graph<int>::GraphEdge;
 
 class ContractionOptimizer {
 
@@ -173,7 +178,7 @@ public:
     explicit PartitionScheme2Optimizer(int num_qubits, GateSet *gates, IndexSet *indexes,
                                        int cx_cut_max, int c_part_width, int _index_width = 2)
             : ContractionOptimizer(num_qubits, gates, indexes, _index_width),
-              cx_cut_max(cx_cut_max), c_part_width(c_part_width)  {}
+              cx_cut_max(cx_cut_max), c_part_width(c_part_width) {}
 
     ~PartitionScheme2Optimizer() override = default;
 
@@ -182,6 +187,29 @@ public:
 private:
     int cx_cut_max;
     int c_part_width;
+};
+
+/**
+ * Perform community contraction first. The community detection algorithm is by Girvan and Newman.
+ * @see https://www.pnas.org/doi/full/10.1073/pnas.122653799
+ * @author Jason Fu
+ */
+class GNCommunityOptimizer : public ContractionOptimizer {
+public:
+    explicit GNCommunityOptimizer(int num_qubits, GateSet *gates, IndexSet *indexes, int _index_width = 2)
+            : ContractionOptimizer(num_qubits, gates, indexes, _index_width) {
+    }
+
+    ContractionTree *optimize() override;
+
+private:
+    // parse the circuit into a graph
+    Graph* constructGraph();
+
+    // build the contraction tree from the graph
+    ContractionTree* buildTreeFromGraph(const std::vector<GraphEdge>& edgeOrder);
+
+    static int unionFind(const std::vector<int> &unionFindSet, int s);
 };
 
 
