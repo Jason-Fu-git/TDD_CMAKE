@@ -11,7 +11,6 @@
 #include "Package.hpp"
 
 
-
 #include <string>
 #include <map>
 #include <regex>
@@ -101,6 +100,46 @@ protected:
  */
 class ExhaustiveSearchOptimizer : public ContractionOptimizer {
 public:
+
+    // Bitset used in bipartite process
+    struct Bitset {
+        unsigned long long *values;
+        int length;
+
+        // default constructor
+        explicit Bitset(int length) : length(length) {
+            values = new unsigned long long[length / 64 + 1];
+            memset(values, 0, (length / 64 + 1) * sizeof(unsigned long long));
+        }
+
+        // destructor
+        ~Bitset() { delete[] values; }
+
+        // check if the bit at position i is set
+        bool test(int i) const { return values[i / 64] & (1ULL << (i % 64)); }
+
+        // set the bit at position i
+        void set(int i) { values[i / 64] |= (1ULL << (i % 64)); }
+
+        // clear the bit at position i
+        void clear(int i) { values[i / 64] &= ~(1ULL << (i % 64)); }
+
+        // add 1
+        void add1(){
+            int i = 0;
+            while (values[i] == ULLONG_MAX && i < length / 64 + 1) {
+                values[i++] = 0;
+            }
+            if (i == length / 64 + 1) {
+                throw std::runtime_error("Bitset overflow");
+            }
+            values[i]++;
+        }
+
+        // print
+        void print() const { for (int i = 0; i < length; i++) std::cout << (short)test(i);}
+    };
+
     explicit ExhaustiveSearchOptimizer(int num_qubits, GateSet *gates, IndexSet *indexes, int _index_width = 2)
             : ContractionOptimizer(
             num_qubits, gates, indexes, _index_width) {
@@ -136,6 +175,7 @@ private:
     // dump the current result to the dp_table
     void dumpDPTable(std::vector<int> &nodeIdxs, ContractionTree *result);
 
+    unsigned long long count = 0;
 
     // the DP table
     std::map<std::string, ContractionTree *> dp_table;
@@ -204,10 +244,10 @@ public:
 
 private:
     // parse the circuit into a graph
-    Graph* constructGraph();
+    Graph *constructGraph();
 
     // build the contraction tree from the graph
-    ContractionTree* buildTreeFromGraph(const std::vector<GraphEdge>& edgeOrder);
+    ContractionTree *buildTreeFromGraph(const std::vector<GraphEdge> &edgeOrder);
 
     static int unionFind(const std::vector<int> &unionFindSet, int s);
 };

@@ -188,12 +188,14 @@ std::vector<std::string> ContractionOptimizer::split(const std::string &s, const
 // ExhaustiveSearch
 // =========
 
+// O(2^{n^2})
 ContractionTree *ExhaustiveSearchOptimizer::optimize() {
     std::vector<int> leaves;
     for (int i = 0; i < node_set.size(); i++) {
         leaves.push_back(i);
     }
     auto tr = findOptimalPartition(leaves, std::numeric_limits<unsigned long long>::max());
+    printf("Exhaustive search performed %lld times\n", count);
     return tr;
 }
 
@@ -225,27 +227,21 @@ ContractionTree *ExhaustiveSearchOptimizer::findOptimalPartition(std::vector<int
         unsigned long long best_cost = minCost;
         ContractionTree *mLc = nullptr, *mRc = nullptr;
         // todo : not necessarily even partition
-        int lvSize = (int) nodeIdxs.size() / 2;
-        std::vector<bool> mask;
-        std::vector<int> stack;
-        for (int i = 0; i < nodeIdxs.size(); i++) {
-            if (i < lvSize) {
-                mask.push_back(true);
-                stack.push_back(i);
-            } else {
-                mask.push_back(false);
-            }
-        }
-        while (stack[0] <= nodeIdxs.size() - lvSize) {
+        Bitset mask((int) nodeIdxs.size() + 1);
+        mask.set(0);
+        while (true) {
+            ++count;
             // generate partition
             std::vector<int> left, right;
             for (int i = 0; i < nodeIdxs.size(); i++) {
-                if (mask[i]) {
+                if (mask.test(i)) {
                     left.push_back(nodeIdxs[i]);
                 } else {
                     right.push_back(nodeIdxs[i]);
                 }
             }
+            if (right.empty())
+                break;
             // compute cost
             auto lc = findOptimalPartition(left, best_cost);
             auto rc = findOptimalPartition(right, best_cost);
@@ -261,22 +257,7 @@ ContractionTree *ExhaustiveSearchOptimizer::findOptimalPartition(std::vector<int
 //                }
             }
             // next
-            int top = lvSize - 1;
-            while (top >= 0 && stack[top] == nodeIdxs.size() - lvSize + top) {
-                mask[stack[top]] = false;
-                --top;
-            }
-            if (top == -1) {
-                break;
-            }
-            mask[stack[top]] = false;
-            ++stack[top];
-            mask[stack[top]] = true;
-            for (int i = top + 1; i < lvSize; i++) {
-                stack[i] = stack[i - 1] + 1;
-                mask[stack[i]] = true;
-            }
-
+            mask.add1();
         }
         if (mLc && mRc) {
             tr = ContractionTree::concat(mLc, mRc, index_width);
@@ -579,10 +560,20 @@ ContractionTree *GNCommunityOptimizer::buildTreeFromGraph(const std::vector<Grap
         auto v = nodes[unionFind(unionFindSet, edge.v)];
         auto p = tr->constructParent(u, v);
         unionFindSet[edge.u] = edge.v;
+        if (edge.u != edge.v) {
+            nodes[edge.u] = nullptr;
+        }
         nodes[unionFind(unionFindSet, edge.v)] = p;
         // the last node is the root
         if (i == 0) {
-            tr->getRoot() = p;
+            // in the end, connect disjoint nodes to the root
+            auto *prev = p;
+            for (auto &node: nodes) {
+                if (node != nullptr && node != prev) {
+                    prev = tr->constructParent(prev, node);
+                }
+            }
+            tr->getRoot() = prev;
         }
     }
     return tr;
