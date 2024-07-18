@@ -45,7 +45,7 @@ public:
         Node *lc;
         Node *rc;
         std::set<Index> indexes; // indexes the node contains
-        unsigned long long cost; // contraction cost for the subtree represented by the node
+        double cost; // contraction cost for the subtree represented by the node (log2)
         int gate_idx; // non-negative value represents a leaf, -1 represents a non-leaf
 
         // constructors
@@ -83,9 +83,63 @@ public:
             delete rc;
         }
 
+        /**
+         * Whether the node is a leaf node
+         *
+         */
         bool isLeaf() {
             return gate_idx >= 0;
         }
+
+        /**
+         * get the size of the tensor the node represents
+         * @returns log_{index_width}(size)
+         */
+        int getTensorSize() {
+            return indexes.size();
+        }
+
+        /**
+         * construct a parent node based on the index set of its left and right children
+         * the cost is calculated at the same time
+         */
+        static Node *constructParent(Node *lc, Node *rc, int index_width) {
+            assert(lc || rc);
+            if (!lc || rc == lc) {
+                return rc;
+            } else if (!rc) {
+                return lc;
+            } else {
+                // construct the parent node
+                Node *parent = new Node(nullptr);
+                // construct the index set for the parent node
+                int commonIdxNum = 0;
+                for (const auto &index: lc->indexes) {
+                    if (rc->indexes.find(index) == rc->indexes.end()) {
+                        parent->indexes.insert(index);
+                    } else {
+                        // the index will get contracted
+                        ++commonIdxNum;
+                    }
+                }
+                for (const auto &index: rc->indexes) {
+                    if (lc->indexes.find(index) == lc->indexes.end()) {
+                        parent->indexes.insert(index);
+                    }
+                }
+                // perform the cost calculation
+                double cost = logSum(lc->cost, rc->cost, index_width);
+                cost = logSum(cost, (double) (parent->indexes.size() + commonIdxNum), index_width);
+                parent->cost = cost;
+                // link the parent node to its children
+                parent->lc = lc;
+                parent->rc = rc;
+                lc->parent = parent;
+                rc->parent = parent;
+                return parent;
+            }
+        }
+
     };
 
     explicit ContractionTree(int _index_width = 2) {
@@ -113,7 +167,7 @@ public:
      *  Get the total contraction cost
      *  @note The cost is calculated based on typical matrix representation, not on exact tdd operation count!
      */
-    unsigned long long getCost() {
+    double getCost() {
         return root->cost;
     }
 
@@ -148,41 +202,9 @@ public:
      * the cost is calculated at the same time
      */
     Node *constructParent(Node *lc, Node *rc) {
-        assert(lc || rc);
-        if (!lc || rc == lc) {
-            return rc;
-        } else if (!rc) {
-            return lc;
-        } else {
-            // construct the parent node
-            Node *parent = new Node(nullptr);
-            // construct the index set for the parent node
-            int commonIdxNum = 0;
-            for (const auto &index: lc->indexes) {
-                if (rc->indexes.find(index) == rc->indexes.end()) {
-                    parent->indexes.insert(index);
-                } else {
-                    // the index will get contracted
-                    ++commonIdxNum;
-                }
-            }
-            for (const auto &index: rc->indexes) {
-                if (lc->indexes.find(index) == lc->indexes.end()) {
-                    parent->indexes.insert(index);
-                }
-            }
-            // perform the cost calculation
-            unsigned long long cost =
-                    lc->cost + rc->cost + std::pow(index_width, parent->indexes.size() + commonIdxNum);
-            parent->cost = cost;
-            // link the parent node to its children
-            parent->lc = lc;
-            parent->rc = rc;
-            lc->parent = parent;
-            rc->parent = parent;
-            ++size;
-            return parent;
-        }
+        auto p = Node::constructParent(lc, rc, index_width);
+        if (p != lc && p != rc) ++size;
+        return p;
     }
 
     /**
@@ -209,7 +231,7 @@ public:
     /**
      * calculate the contraction cost of two contraction trees
      */
-    static unsigned long long contractionCost(ContractionTree *t1, ContractionTree *t2, int index_width) {
+    static double contractionCost(ContractionTree *t1, ContractionTree *t2, int index_width) {
         std::vector<Index> idxSet;
         int commonIdxNum = 0;
         // iterate through t1's indexes
@@ -230,8 +252,64 @@ public:
             }
         }
         // perform the cost calculation
-        unsigned long long cost = t1->getCost() + t2->getCost() + std::pow(index_width, idxSet.size() + commonIdxNum);
+        double cost = logSum(t1->getCost(), t2->getCost(), index_width);
+        cost = logSum(cost, (double) (idxSet.size() + commonIdxNum), index_width);
         return cost;
+    }
+
+    /**
+     * calculate the contraction cost of two nodes
+     */
+    static double contractionCost(Node *lc, Node *rc, int index_width) {
+        std::vector<Index> idxSet;
+        int commonIdxNum = 0;
+        // iterate through t1's indexes
+        for (const auto &index: rc->indexes) {
+            if (lc->indexes.find(index)
+                == lc->indexes.end()) {
+                idxSet.push_back(index);
+            } else {
+                // the index will get contracted
+                ++commonIdxNum;
+            }
+        }
+        // iterate through t2's indexes
+        for (const auto &index: lc->indexes) {
+            if (rc->indexes.find(index)
+                == rc->indexes.end()) {
+                idxSet.push_back(index);
+            }
+        }
+        // perform the cost calculation
+        double cost = logSum(rc->cost, lc->cost, index_width);
+        cost = logSum(cost, (double) (idxSet.size() + commonIdxNum, index_width), index_width);
+        return cost;
+    }
+
+    /**
+     * solve function w^a + w^b = w^x
+     * @return x
+     */
+    inline static double logSum(double a, double b, int w) {
+        // ensure a < b
+        if (a > b) {
+            return logSum(b, a, w);
+        }
+        if (b > a + 10)
+            return b;
+        // w^x = w^b (1 + w^{a-b})
+        return b + log(1 + pow(w, a - b)) * log(w);
+    }
+
+    /**
+     * solve function w^a - w^b = w^x
+     * @return x
+     */
+    inline static double logSub(double a, double b, int w) {
+        assert(a >= b);
+        if (a - b > 10)
+            return a;
+        return a + log(1 - pow(w, b - a)) * log(w);
     }
 
 private:

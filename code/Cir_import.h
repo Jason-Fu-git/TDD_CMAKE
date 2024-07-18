@@ -32,6 +32,7 @@ enum OptimizingMethod {
     PARTITION_1,
     PARTITION_2,
     GN_COMMUNITY,
+    GREEDY,
 };
 
 
@@ -829,7 +830,10 @@ int *Simulate_with_ContractionOptimizer(std::string path, std::string file_name,
     } else if (method == OptimizingMethod::GN_COMMUNITY) {
         optimizer = new GNCommunityOptimizer(qubits_num, &gate_set, &Index_set);
         tree = optimizer->optimize();
-    } else {
+    } else if (method == OptimizingMethod::GREEDY){
+        optimizer = new GreedyOptimizer(qubits_num, &gate_set, &Index_set, 0.25, qubits_num * 2);
+        tree = optimizer->optimize();
+    }else {
         fprintf(stderr, "Unknown optimization method %d\n", method);
         exit(2);
     }

@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
     string file_name = argv[1];
     int *nodes;
     int n = get_qubits_num(path2 + file_name);
-    auto dd = std::make_unique<dd::Package<>>(3 * n);
+    auto dd = std::make_unique<dd::Package<>>(4 * n);
     std::cout << "File name:" << file_name << std::endl;
     nodes = Simulate_with_tdd(path2, file_name, dd);
     std::cout << "Naive Method" << std::endl;
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
 
 
     std::cout << "File name:" << file_name << std::endl;
-    auto dd2 = std::make_unique<dd::Package<>>(3 * n);
+    auto dd2 = std::make_unique<dd::Package<>>(4 * n);
     nodes = Simulate_with_partition1(path2, file_name, dd2);
 
     std::cout << "Partition 1" << std::endl;
@@ -71,28 +71,28 @@ int main(int argc, char *argv[]) {
     std::cout << "===================================" << std::endl;
 
     std::cout << "File name:" << file_name << std::endl;
-    auto dd3 = std::make_unique<dd::Package<>>(3 * n);
+    auto dd3 = std::make_unique<dd::Package<>>(4 * n);
     nodes = Simulate_with_partition2(path2, file_name, dd3);
 
     std::cout << "Partition 2" << std::endl;
     std::cout << "Nodes max:" << *nodes << std::endl;
     std::cout << "Nodes Final:" << *(nodes + 1) << std::endl;
     std::cout << "===================================" << std::endl;
-
-    std::cout << "File name:" << file_name << std::endl;
-    std::cout << "Exhaustive Search" << std::endl;
-
-    auto dd4 = std::make_unique<dd::Package<>>(3 * n);
-    nodes = Simulate_with_ContractionOptimizer(path2, file_name, dd4, OptimizingMethod::EXHAUSTIVE_SEARCH);
-
-
-    std::cout << "Nodes max:" << *nodes << std::endl;
-    std::cout << "Nodes Final:" << *(nodes + 1) << std::endl;
-    std::cout << "===================================" << std::endl;
+//
+//    std::cout << "File name:" << file_name << std::endl;
+//    std::cout << "Exhaustive Search" << std::endl;
+//
+//    auto dd4 = std::make_unique<dd::Package<>>(4 * n);
+//    nodes = Simulate_with_ContractionOptimizer(path2, file_name, dd4, OptimizingMethod::EXHAUSTIVE_SEARCH);
+//
+//
+//    std::cout << "Nodes max:" << *nodes << std::endl;
+//    std::cout << "Nodes Final:" << *(nodes + 1) << std::endl;
+//    std::cout << "===================================" << std::endl;
 
     std::cout << "File name:" << file_name << std::endl;
     std::cout << "Partition Scheme 1" << std::endl;
-    auto dd5 = std::make_unique<dd::Package<>>(3 * n);
+    auto dd5 = std::make_unique<dd::Package<>>(4 * n);
     nodes = Simulate_with_ContractionOptimizer(path2, file_name, dd5, OptimizingMethod::PARTITION_1);
 
     std::cout << "Nodes max:" << *nodes << std::endl;
@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
     std::cout << "File name:" << file_name << std::endl;
     std::cout << "Partition Scheme 2" << std::endl;
 
-    auto dd6 = std::make_unique<dd::Package<>>(3 * n);
+    auto dd6 = std::make_unique<dd::Package<>>(4 * n);
     nodes = Simulate_with_ContractionOptimizer(path2, file_name, dd6, OptimizingMethod::PARTITION_2);
     std::cout << "Nodes max:" << *nodes << std::endl;
     std::cout << "Nodes Final:" << *(nodes + 1) << std::endl;
@@ -111,8 +111,17 @@ int main(int argc, char *argv[]) {
     std::cout << "File name:" << file_name << std::endl;
     std::cout << "GN Community" << std::endl;
 
-    auto dd7 = std::make_unique<dd::Package<>>(3 * n);
+    auto dd7 = std::make_unique<dd::Package<>>(4 * n);
     nodes = Simulate_with_ContractionOptimizer(path2, file_name, dd7, OptimizingMethod::GN_COMMUNITY);
+    std::cout << "Nodes max:" << *nodes << std::endl;
+    std::cout << "Nodes Final:" << *(nodes + 1) << std::endl;
+    std::cout << "===================================" << std::endl;
+
+    std::cout << "File name:" << file_name << std::endl;
+    std::cout << "GREEDY" << std::endl;
+
+    auto dd8 = std::make_unique<dd::Package<>>(4 * n);
+    nodes = Simulate_with_ContractionOptimizer(path2, file_name, dd8, OptimizingMethod::GREEDY);
     std::cout << "Nodes max:" << *nodes << std::endl;
     std::cout << "Nodes Final:" << *(nodes + 1) << std::endl;
     std::cout << "===================================" << std::endl;
@@ -142,7 +151,7 @@ int save_data() {
     while (std::getline(file_list2, line2)) {
         std::cout << "file name:" << line2 << std::endl;
         int n = get_qubits_num(path2 + line2);
-        auto dd = std::make_unique<dd::Package<>>(3 * n);
+        auto dd = std::make_unique<dd::Package<>>(4 * n);
         start2 = clock();
         nodes2 = Simulate_with_tdd(path2, line2, dd);
         finish2 = clock();
@@ -163,7 +172,7 @@ int save_data() {
     while (std::getline(file_list2, line2)) {
         std::cout << "file name:" << line2 << std::endl;
         int n = get_qubits_num(path2 + line2);
-        auto dd = std::make_unique<dd::Package<>>(3 * n);
+        auto dd = std::make_unique<dd::Package<>>(4 * n);
         start2 = clock();
         nodes2 = Simulate_with_partition1(path2, line2, dd);
         finish2 = clock();
@@ -183,7 +192,7 @@ int save_data() {
     while (std::getline(file_list2, line2)) {
         std::cout << "file name:" << line2 << std::endl;
         int n = get_qubits_num(path2 + line2);
-        auto dd = std::make_unique<dd::Package<>>(3 * n);
+        auto dd = std::make_unique<dd::Package<>>(4 * n);
         start2 = clock();
         nodes2 = Simulate_with_partition2(path2, line2, dd);
         finish2 = clock();

@@ -15,6 +15,8 @@
 #include <map>
 #include <regex>
 #include <cassert>
+#include <random>
+#include <ctime>
 #include <vector>
 
 using GateSet = std::map<int, gate>;
@@ -85,6 +87,8 @@ protected:
 
     static std::vector<std::string> split(const std::string &s, const std::string &seperator);
 
+    inline static int unionFind(const std::vector<int> &unionFindSet, int s);
+
     int qubits_num;
     int index_width;
     GateSet *gate_set;
@@ -125,7 +129,7 @@ public:
         void clear(int i) { values[i / 64] &= ~(1ULL << (i % 64)); }
 
         // add 1
-        void add1(){
+        void add1() {
             int i = 0;
             while (values[i] == ULLONG_MAX && i < length / 64 + 1) {
                 values[i++] = 0;
@@ -137,7 +141,7 @@ public:
         }
 
         // print
-        void print() const { for (int i = 0; i < length; i++) std::cout << (short)test(i);}
+        void print() const { for (int i = 0; i < length; i++) std::cout << (short) test(i); }
     };
 
     explicit ExhaustiveSearchOptimizer(int num_qubits, GateSet *gates, IndexSet *indexes, int _index_width = 2)
@@ -248,8 +252,63 @@ private:
 
     // build the contraction tree from the graph
     ContractionTree *buildTreeFromGraph(const std::vector<GraphEdge> &edgeOrder);
+};
 
-    static int unionFind(const std::vector<int> &unionFindSet, int s);
+/**
+ * Optimizer based on a bottom-up greedy scheme
+ * @see https://quantum-journal.org/papers/q-2021-03-15-410/
+ * @author Jason Fu
+ */
+class GreedyOptimizer : public ContractionOptimizer {
+public:
+    struct Matrix {
+        int rows;
+        int cols;
+        double *data;
+
+        Matrix(int rows, int cols) : rows(rows), cols(cols) {
+            data = new double[rows * cols];
+            memset(data, 0, sizeof(double) * rows * cols);
+        }
+
+        ~Matrix() {
+            delete[] data;
+        }
+
+        inline double at(int i, int j) const {
+            return data[i * cols + j];
+        }
+
+        inline void set(int i, int j, double value) {
+            data[i * cols + j] = value;
+        }
+
+        inline void setNull(int i, int j) {
+            set(i, j, 1e20);
+        }
+    };
+
+    explicit GreedyOptimizer(int num_qubits, GateSet *gates, IndexSet *indexes, double alpha, double tau,
+                             int _index_width = 2)
+            : ContractionOptimizer(num_qubits, gates, indexes, _index_width), alpha(alpha), tau(tau) {
+    }
+
+    ContractionTree *optimize() override;
+
+private:
+    /**
+     * cost(lc, rc) = SIZE(lc * rc) - alpha * (SIZE(lc) + SIZE(rc))
+     * @return the Boltzmann weight
+     */
+    inline double calculateCost(Node *lc, Node *rc);
+
+    inline std::pair<int, int> getBestPair(const Matrix &m);;
+
+    // hyper parameters
+    double alpha;
+    double tau;
+    // random generator
+    std::default_random_engine randGen;
 };
 
 

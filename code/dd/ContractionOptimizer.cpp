@@ -17,6 +17,7 @@ ContractionOptimizer::contractNode(Node *node, int &max_nodes, int &final_nodes,
     dd::TDD tdd;
     if (node->isLeaf()) {
         tdd = constructGate(gate_set->at(node->gate_idx).name, index_set->at(node->gate_idx), dd);
+//        printf("Leaf node: %d\n", node->gate_idx);
         if (release)
             dd->incRef(tdd.e);
     } else {
@@ -557,19 +558,18 @@ ContractionTree *GNCommunityOptimizer::buildTreeFromGraph(const std::vector<Grap
     for (int i = edgeOrder.size() - 1; i >= 0; i--) {
         auto &edge = edgeOrder[i];
         auto u = nodes[unionFind(unionFindSet, edge.u)];
+        nodes[unionFind(unionFindSet, edge.u)] = nullptr;
         auto v = nodes[unionFind(unionFindSet, edge.v)];
+        nodes[unionFind(unionFindSet, edge.v)] = nullptr;
         auto p = tr->constructParent(u, v);
         unionFindSet[edge.u] = edge.v;
-        if (edge.u != edge.v) {
-            nodes[edge.u] = nullptr;
-        }
         nodes[unionFind(unionFindSet, edge.v)] = p;
         // the last node is the root
         if (i == 0) {
             // in the end, connect disjoint nodes to the root
             auto *prev = p;
             for (auto &node: nodes) {
-                if (node != nullptr && node != prev) {
+                if (node != nullptr && node != p) {
                     prev = tr->constructParent(prev, node);
                 }
             }
@@ -579,8 +579,96 @@ ContractionTree *GNCommunityOptimizer::buildTreeFromGraph(const std::vector<Grap
     return tr;
 }
 
-int GNCommunityOptimizer::unionFind(const std::vector<int> &unionFindSet, int s) {
+int ContractionOptimizer::unionFind(const std::vector<int> &unionFindSet, int s) {
     while (unionFindSet[s] != s)
         s = unionFindSet[s];
     return s;
+}
+
+// ===============================================================================
+// GreedyOptimizer
+// ===============================================================================
+
+// O(n^3)
+ContractionTree *GreedyOptimizer::optimize() {
+    auto *tr = new ContractionTree(index_width);
+    Matrix matrix(gate_set->size(), gate_set->size());
+    // construct gate nodes
+    std::vector<Node *> nodes;
+    for (int i = 0; i < gate_set->size(); i++) {
+        nodes.push_back(tr->constructNode(index_set->at(i), i));
+    }
+    // calculate contraction costs between two arbitrary gates
+    for (int i = 0; i < gate_set->size(); i++) {
+        for (int j = 0; j < gate_set->size(); j++) {
+            if (i != j) {
+                matrix.set(i, j, calculateCost(nodes[i], nodes[j]));
+            } else {
+                matrix.setNull(i, j);
+            }
+        }
+    }
+    // greedy build
+    // gate_set.size() - 1 times contraction
+    for (int i = 1; i < gate_set->size(); i++) {
+        // return the next pair
+        auto [u, v] = getBestPair(matrix);
+        // contract v into u
+        auto p = tr->constructParent(nodes[u], nodes[v]);
+        // update nodes set
+        nodes[u] = p;
+        nodes[v] = nullptr;
+        // update matrix
+        for (int j = 0; j < gate_set->size(); j++) {
+            // empty v
+            matrix.setNull(v, j);
+            matrix.setNull(j, v);
+            // update new contraction cost
+            if (j != u) {
+                matrix.set(u, j, calculateCost(nodes[u], nodes[j]));
+                matrix.set(j, u, calculateCost(nodes[j], nodes[u]));
+            }
+        }
+    }
+    // find the only none-null node to be the tree's root
+    for (int i = 0; i < gate_set->size(); i++) {
+        if (nodes[i] != nullptr) {
+            assert(tr->getRoot() == nullptr);
+            tr->getRoot() = nodes[i];
+        }
+    }
+    return tr;
+}
+
+std::pair<int, int> GreedyOptimizer::getBestPair(const GreedyOptimizer::Matrix &m) {
+    // find the pair with the minimum cost
+    int index = 0;
+    double min_cost = 1e20;
+    for (int i = 0; i < m.rows; i++) {
+        for (int j = 0; j < m.cols; j++) {
+            if (m.at(i, j) < min_cost) {
+                min_cost = m.at(i, j);
+                index = i * m.cols + j;
+            }
+        }
+    }
+    assert(min_cost < 1e20); // if this assertion fails, it means null value should be bigger
+    return {index / m.cols, index % m.cols};
+}
+
+double GreedyOptimizer::calculateCost(Node *lc, Node *rc) {
+    if (lc == nullptr || rc == nullptr)
+        return 1e20;
+    auto p = Node::constructParent(lc, rc, index_width);
+    auto pSize = p->getTensorSize(); // log(size)
+    auto cSize = ContractionTree::logSum(lc->getTensorSize(), rc->getTensorSize(), index_width); // log(size)
+    // add alpha
+    if (alpha > 1e-10)
+        cSize += log(alpha) / log(index_width);
+    else
+        cSize = -1e20;
+
+    if (pSize < cSize)
+        return -std::exp(ContractionTree::logSub(cSize, pSize, index_width) / tau);
+    return std::exp(ContractionTree::logSub(pSize, cSize, index_width) / tau);
 }
