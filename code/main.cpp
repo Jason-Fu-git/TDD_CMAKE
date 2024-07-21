@@ -6,8 +6,7 @@
 
 #include "dd/Export.hpp"
 #include "Cir_import.h"
-#include "dd/Tensor.hpp"
-#include "dd/Graph.hpp"
+#include "libkahypar.h"
 
 using namespace std;
 
@@ -15,6 +14,55 @@ int save_data();
 
 
 int main(int argc, char *argv[]) {
+
+
+//    kahypar_context_t *context = kahypar_context_new();
+//    kahypar_configure_context_from_file(context, "config/kahypar_config.ini");
+//
+//    kahypar_set_seed(context, 42);
+//
+//    const kahypar_hypernode_id_t num_vertices = 4;
+//    const kahypar_hyperedge_id_t num_hyperedges = 2;
+//
+//    std::unique_ptr<kahypar_hyperedge_weight_t[]> hyperedge_weights = std::make_unique<kahypar_hyperedge_weight_t[]>(2);
+//
+//    // force the cut to contain hyperedge 0 and 2
+//    hyperedge_weights[0] = 1;
+//    hyperedge_weights[1] = 1;
+//
+//    std::unique_ptr<size_t[]> hyperedge_indices = std::make_unique<size_t[]>(3);
+//
+//    hyperedge_indices[0] = 0;
+//    hyperedge_indices[1] = 2;
+//    hyperedge_indices[2] = 4;
+//
+//    std::unique_ptr<kahypar_hyperedge_id_t[]> hyperedges = std::make_unique<kahypar_hyperedge_id_t[]>(4);
+//
+//    // hypergraph from hMetis manual page 14
+//    hyperedges[0] = 0;
+//    hyperedges[1] = 1;
+//    hyperedges[2] = 2;
+//    hyperedges[3] = 3;
+//
+//    const double imbalance = 0.03;
+//    const kahypar_partition_id_t k = 2;
+//
+//    kahypar_hyperedge_weight_t objective = 0;
+//
+//    std::vector<kahypar_partition_id_t> partition(num_vertices, -1);
+//
+//    kahypar_partition(num_vertices, num_hyperedges,
+//                      imbalance, k,
+//            /*vertex_weights */ nullptr, hyperedge_weights.get(),
+//                      hyperedge_indices.get(), hyperedges.get(),
+//                      &objective, context, partition.data());
+//
+//    for (int i = 0; i != num_vertices; ++i) {
+//        std::cout << i << ":" << partition[i] << std::endl;
+//    }
+//
+//    kahypar_context_free(context);
+
 
 //    qc::QuantumComputation qc1{};
 //
@@ -78,7 +126,7 @@ int main(int argc, char *argv[]) {
     std::cout << "Nodes max:" << *nodes << std::endl;
     std::cout << "Nodes Final:" << *(nodes + 1) << std::endl;
     std::cout << "===================================" << std::endl;
-//
+
 //    std::cout << "File name:" << file_name << std::endl;
 //    std::cout << "Exhaustive Search" << std::endl;
 //
@@ -122,6 +170,12 @@ int main(int argc, char *argv[]) {
 
     auto dd8 = std::make_unique<dd::Package<>>(4 * n);
     nodes = Simulate_with_ContractionOptimizer(path2, file_name, dd8, OptimizingMethod::GREEDY);
+    std::cout << "Nodes max:" << *nodes << std::endl;
+    std::cout << "Nodes Final:" << *(nodes + 1) << std::endl;
+    std::cout << "===================================" << std::endl;
+
+    auto dd9 = std::make_unique<dd::Package<>>(4 * n);
+    nodes = Simulate_with_ContractionOptimizer(path2, file_name, dd9, OptimizingMethod::KAHYPAR);
     std::cout << "Nodes max:" << *nodes << std::endl;
     std::cout << "Nodes Final:" << *(nodes + 1) << std::endl;
     std::cout << "===================================" << std::endl;

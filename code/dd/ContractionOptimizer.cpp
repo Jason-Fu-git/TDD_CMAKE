@@ -5,6 +5,8 @@
 #include "ContractionOptimizer.hpp"
 #include "Definitions.hpp"
 
+#include "libkahypar.h"
+
 // =============
 // Base Class
 // =============
@@ -227,7 +229,6 @@ ContractionTree *ExhaustiveSearchOptimizer::findOptimalPartition(std::vector<int
         // perform partition
         unsigned long long best_cost = minCost;
         ContractionTree *mLc = nullptr, *mRc = nullptr;
-        // todo : not necessarily even partition
         Bitset mask((int) nodeIdxs.size() + 1);
         mask.set(0);
         while (true) {
@@ -532,7 +533,7 @@ Graph *GNCommunityOptimizer::constructGraph() {
     // iterate through each gate
     for (int i = 0; i < gate_set->size(); i++) {
         for (int j = i + 1; j < gate_set->size(); j++) {
-            // find common indexes
+            // find common indices
             for (auto &index: (*index_set)[i]) {
                 if (std::find((*index_set)[j].begin(), (*index_set)[j].end(), index) != (*index_set)[j].end()) {
                     graph->addEdge(i, j);
@@ -671,4 +672,100 @@ double GreedyOptimizer::calculateCost(Node *lc, Node *rc) {
     if (pSize < cSize)
         return -std::exp(ContractionTree::logSub(cSize, pSize, index_width) / tau);
     return std::exp(ContractionTree::logSub(pSize, cSize, index_width) / tau);
+}
+
+// =====================================================
+// ================ KahyparOptimizer ===================
+// =====================================================
+
+ContractionTree *KahyparOptimizer::optimize() {
+    // build graph
+    std::vector<kahypar_partition_id_t> indices;
+    for (int i = 0; i < gate_set->size(); ++i) {
+        indices.push_back(i);
+    }
+    // initialize the partitionVec scheme
+    kahypar_context_t *context = kahypar_context_new();
+    // replace this with your own configuration
+    kahypar_configure_context_from_file(context, "config/kahypar_config.ini");
+    // start partitioning
+    auto tr = partition(indices, context);
+    return tr;
+}
+
+ContractionTree *KahyparOptimizer::partition(const std::vector<kahypar_partition_id_t> &nodeIndices,
+                                             kahypar_context_t *context) {
+    // recursion base
+    assert(!nodeIndices.empty());
+    if (nodeIndices.size() == 1) {
+        auto tr = new ContractionTree(index_width);
+        auto node = tr->constructNode(index_set->at(nodeIndices[0]), nodeIndices[0]);
+        tr->getRoot() = node;
+        return tr;
+    } else if (nodeIndices.size() == 2) {
+        auto tr = new ContractionTree(index_width);
+        auto lc = tr->constructNode(index_set->at(nodeIndices[0]), nodeIndices[0]);
+        auto rc = tr->constructNode(index_set->at(nodeIndices[1]), nodeIndices[1]);
+        auto root = tr->constructParent(lc, rc);
+        tr->getRoot() = root;
+        return tr;
+    }
+
+    // build edges
+    std::vector<std::pair<int, int> > edges;
+    for (int i = 0; i < nodeIndices.size(); ++i) {
+        // search for common indices
+        auto indexSet = index_set->at(nodeIndices[i]);
+        for (int j = i + 1; j < nodeIndices.size(); ++j) {
+            for (const auto &index: indexSet) {
+                if (std::find(index_set->at(nodeIndices[j]).begin(), index_set->at(nodeIndices[j]).end(), index)
+                    != index_set->at(nodeIndices[j]).end()) {
+                    edges.emplace_back(i, j);
+                    break;
+                }
+            }
+        }
+    }
+    // config numbers
+    const kahypar_hypernode_id_t num_nodes = nodeIndices.size();
+    const kahypar_hyperedge_id_t num_edges = edges.size();
+    // config hyperedges
+    std::unique_ptr<size_t[]> hyperedge_indices = std::make_unique<size_t[]>(num_edges + 1);
+    std::unique_ptr<kahypar_hyperedge_id_t[]> hyperedges = std::make_unique<kahypar_hyperedge_id_t[]>(num_edges * 2);
+    for (int i = 0; i < num_edges; ++i) {
+        hyperedge_indices[i] = 2 * i;
+        hyperedges[2 * i] = edges[i].first;
+        hyperedges[2 * i + 1] = edges[i].second;
+    }
+    hyperedge_indices[num_edges] = 2 * num_edges;
+    // start partitioning
+    kahypar_hyperedge_weight_t objective = 0;
+    std::vector<kahypar_partition_id_t> partitionVec(num_nodes, -1);
+    // optional: add node weights and edge weights
+    kahypar_partition(
+            num_nodes, num_edges, imbalance, k,
+            nullptr, nullptr,
+            hyperedge_indices.get(), hyperedges.get(),
+            &objective, context, partitionVec.data()
+    );
+    // parse
+    std::map<int, std::vector<kahypar_partition_id_t> > partitionMap;
+    for (int i = 0; i < k; ++i) {
+        partitionMap[i] = {};
+    }
+    for (int i = 0; i < num_nodes; ++i) {
+        partitionMap[partitionVec[i]].push_back(nodeIndices[i]);
+    }
+    // build tree
+    ContractionTree *tr = nullptr;
+    for (int i = 0; i < k; ++i) {
+        if (!partitionMap[i].empty()) {
+            auto partitionTr = partition(partitionMap[i], context);
+            if (tr)
+                tr = ContractionTree::concat(partitionTr, tr, index_width);
+            else
+                tr = partitionTr;
+        }
+    }
+    return tr;
 }

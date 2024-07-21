@@ -18,6 +18,7 @@
 #include <random>
 #include <ctime>
 #include <vector>
+#include <libkahypar.h>
 
 using GateSet = std::map<int, gate>;
 using IndexSet = std::map<int, std::vector<dd::Index>>;
@@ -309,6 +310,31 @@ private:
     double tau;
     // random generator
     std::default_random_engine randGen;
+};
+
+/**
+ * Contraction Optimizer based on Kahypar
+ * @see https://kahypar.org/
+ * @author Jason Fu
+ *
+ */
+class KahyparOptimizer : public ContractionOptimizer {
+public:
+    explicit KahyparOptimizer(int num_qubits, GateSet *gates, IndexSet *indexes,
+                              double imbalance, kahypar_partition_id_t k,
+                              int _index_width = 2)
+            : ContractionOptimizer(num_qubits, gates, indexes, _index_width),
+              imbalance(imbalance), k(k) {
+    }
+
+    ContractionTree *optimize() override;
+
+private:
+    ContractionTree* partition(const std::vector<int> &nodeIndexes,
+                               kahypar_context_t *context  );
+
+    double imbalance;
+    kahypar_partition_id_t k;
 };
 
 

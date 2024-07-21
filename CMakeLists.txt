@@ -3,6 +3,9 @@ project(TDD_C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
+# replace this with your actual library path where kahypar is installed
+link_directories(/usr/local/lib)
+
 add_subdirectory(code/deps/xtl)
 add_subdirectory(code/deps/xtensor)
 
@@ -81,3 +84,4 @@ add_executable(${PROJECT_NAME} ${TDD_C_SOURCES} ${TDD_C_INCLUDES})
 
 target_link_libraries(${PROJECT_NAME} xtl)
 target_link_libraries(${PROJECT_NAME} xtensor)
+target_link_libraries(${PROJECT_NAME} kahypar)

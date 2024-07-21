@@ -33,6 +33,7 @@ enum OptimizingMethod {
     PARTITION_2,
     GN_COMMUNITY,
     GREEDY,
+    KAHYPAR,
 };
 
 
@@ -150,7 +151,7 @@ std::map<int, gate> import_circuit(std::string file_name) {
     std::getline(infile, line);
     std::getline(infile, line);
     while (std::getline(infile, line)) {
-        if(line.empty())
+        if (line.empty())
             continue;
 
         gate temp_gate;
@@ -161,7 +162,7 @@ std::map<int, gate> import_circuit(std::string file_name) {
         temp_gate.name = g[0];
 
         if (g[0] == "cx") {
-            regex pattern("q\\[(\\d+)\\], ?q\\[(\\d+)\\];");
+            regex pattern("q\\[(\\d+)\\], ?q\\[(\\d+)\\];[\r\n]*");
             if (regex_match(g[1], result, pattern)) {
                 if (stoi(result[1]) > qubits_num) {
                     qubits_num = stoi(result[1]);
@@ -174,7 +175,7 @@ std::map<int, gate> import_circuit(std::string file_name) {
             }
 
         } else {
-            regex pattern("q\\[(\\d+)\\];");
+            regex pattern("q\\[(\\d+)\\];[\r\n]*");
             if (regex_match(g[1], result, pattern)) {
                 if (stoi(result[1]) > qubits_num) {
                     qubits_num = stoi(result[1]);
@@ -830,10 +831,13 @@ int *Simulate_with_ContractionOptimizer(std::string path, std::string file_name,
     } else if (method == OptimizingMethod::GN_COMMUNITY) {
         optimizer = new GNCommunityOptimizer(qubits_num, &gate_set, &Index_set);
         tree = optimizer->optimize();
-    } else if (method == OptimizingMethod::GREEDY){
+    } else if (method == OptimizingMethod::GREEDY) {
         optimizer = new GreedyOptimizer(qubits_num, &gate_set, &Index_set, 0.25, qubits_num * 2);
         tree = optimizer->optimize();
-    }else {
+    } else if (method == OptimizingMethod::KAHYPAR) {
+        optimizer = new KahyparOptimizer(qubits_num, &gate_set, &Index_set, 0.03, 2);
+        tree = optimizer->optimize();
+    } else {
         fprintf(stderr, "Unknown optimization method %d\n", method);
         exit(2);
     }
@@ -891,7 +895,7 @@ int get_qubits_num(std::string file_name) {
 
         if (g[0] == "cx") {
 
-            regex pattern("q\\[(\\d+)\\],q\\[(\\d+)\\];");
+            regex pattern("q\\[(\\d+)\\],q\\[(\\d+)\\];[\r\n]*");
             if (regex_match(g[1], result, pattern)) {
                 if (stoi(result[1]) > qubits_num) {
                     qubits_num = stoi(result[1]);
@@ -902,7 +906,7 @@ int get_qubits_num(std::string file_name) {
             }
 
         } else {
-            regex pattern("q\\[(\\d+)\\];");
+            regex pattern("q\\[(\\d+)\\];[\r\n]*");
             if (regex_match(g[1], result, pattern)) {
                 if (stoi(result[1]) > qubits_num) {
                     qubits_num = stoi(result[1]);
