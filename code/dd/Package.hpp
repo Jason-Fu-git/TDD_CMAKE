@@ -1005,7 +1005,7 @@ namespace dd {
 
             // recursively compute contraction
             if (newk1 > newk2) {
-                if (int(newk1 * 2) % 2 == 1) {
+                if (std::abs(int(newk1 * 2)) % 2 == 1) {
                     // newk1 is going to be contracted
                     r = ResultEdge::zero;
                     ResultEdge etemp{};
@@ -1037,7 +1037,7 @@ namespace dd {
                     r = makeDDNode(Qubit(newk1), e, true);
                 }
             } else if (newk1 < newk2) {
-                if (int(newk2 * 2) % 2 == 1) {
+                if (std::abs(int(newk2 * 2)) % 2 == 1) {
                     r = ResultEdge::zero;
                     ResultEdge etemp{};
                     for (int k = 0; k < y.p->e.size(); ++k) {
@@ -1066,7 +1066,7 @@ namespace dd {
                 }
 
             } else { // newk1 == newk2
-                if (int(newk2 * 2) % 2 == 1) {
+                if (std::abs(int(newk2 * 2)) % 2 == 1) {
                     r = ResultEdge::zero;
                     ResultEdge etemp{};
                     for (int k = 0; k < x.p->e.size(); ++k) {

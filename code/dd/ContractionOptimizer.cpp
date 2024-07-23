@@ -7,6 +7,9 @@
 
 #include "libkahypar.h"
 
+#include <algorithm>
+#include <random>
+
 // =============
 // Base Class
 // =============
@@ -563,7 +566,7 @@ ContractionTree *GNCommunityOptimizer::buildTreeFromGraph(const std::vector<Grap
         auto v = nodes[unionFind(unionFindSet, edge.v)];
         nodes[unionFind(unionFindSet, edge.v)] = nullptr;
         auto p = tr->constructParent(u, v);
-        unionFindSet[edge.u] = edge.v;
+        unionFindSet[unionFind(unionFindSet, edge.u)] = unionFind(unionFindSet, edge.v);
         nodes[unionFind(unionFindSet, edge.v)] = p;
         // the last node is the root
         if (i == 0) {
@@ -603,7 +606,10 @@ ContractionTree *GreedyOptimizer::optimize() {
     for (int i = 0; i < gate_set->size(); i++) {
         for (int j = 0; j < gate_set->size(); j++) {
             if (i != j) {
-                matrix.set(i, j, calculateCost(nodes[i], nodes[j]));
+                if (isAdjacent(nodes[i], nodes[j]))
+                    matrix.set(i, j, calculateCost(nodes[i], nodes[j]));
+                else
+                    matrix.setNull(i, j);
             } else {
                 matrix.setNull(i, j);
             }
@@ -611,10 +617,12 @@ ContractionTree *GreedyOptimizer::optimize() {
     }
     // greedy build
     // gate_set.size() - 1 times contraction
-    for (int i = 1; i < gate_set->size(); i++) {
+    while (true) {
         // return the next pair
         auto [u, v] = getBestPair(matrix);
+        if (u == -1 && v == -1) break;
         // contract v into u
+        assert(isAdjacent(nodes[u], nodes[v]));
         auto p = tr->constructParent(nodes[u], nodes[v]);
         // update nodes set
         nodes[u] = p;
@@ -626,18 +634,25 @@ ContractionTree *GreedyOptimizer::optimize() {
             matrix.setNull(j, v);
             // update new contraction cost
             if (j != u) {
-                matrix.set(u, j, calculateCost(nodes[u], nodes[j]));
-                matrix.set(j, u, calculateCost(nodes[j], nodes[u]));
+                if (isAdjacent(nodes[u], nodes[j])) {
+                    matrix.set(u, j, calculateCost(nodes[u], nodes[j]));
+                    matrix.set(j, u, calculateCost(nodes[j], nodes[u]));
+                } else {
+                    matrix.setNull(u, j);
+                    matrix.setNull(j, u);
+                }
             }
         }
     }
-    // find the only none-null node to be the tree's root
+    // contract the disjoint nodes
+    Node *n = nullptr;
     for (int i = 0; i < gate_set->size(); i++) {
         if (nodes[i] != nullptr) {
-            assert(tr->getRoot() == nullptr);
-            tr->getRoot() = nodes[i];
+            if (n == nullptr) n = nodes[i];
+            else n = tr->constructParent(n, nodes[i]);
         }
     }
+    tr->getRoot() = n;
     return tr;
 }
 
@@ -653,7 +668,8 @@ std::pair<int, int> GreedyOptimizer::getBestPair(const GreedyOptimizer::Matrix &
             }
         }
     }
-    assert(min_cost < 1e20); // if this assertion fails, it means null value should be bigger
+    if (min_cost == 1e20)
+        return {-1, -1};
     return {index / m.cols, index % m.cols};
 }
 
@@ -672,6 +688,16 @@ double GreedyOptimizer::calculateCost(Node *lc, Node *rc) {
     if (pSize < cSize)
         return -std::exp(ContractionTree::logSub(cSize, pSize, index_width) / tau);
     return std::exp(ContractionTree::logSub(pSize, cSize, index_width) / tau);
+}
+
+bool GreedyOptimizer::isAdjacent(Node *lc, Node *rc) {
+    if (rc == nullptr || lc == nullptr)
+        return false;
+    for (const auto &index: lc->indexes) {
+        if (std::find(rc->indexes.begin(), rc->indexes.end(), index) != rc->indexes.end())
+            return true;
+    }
+    return false;
 }
 
 // =====================================================

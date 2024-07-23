@@ -104,6 +104,8 @@ public:
          * the cost is calculated at the same time
          */
         static Node *constructParent(Node *lc, Node *rc, int index_width) {
+            if(lc == nullptr && rc == nullptr)
+                printf("ERROR: both children are null\n");
             assert(lc || rc);
             if (!lc || rc == lc) {
                 return rc;

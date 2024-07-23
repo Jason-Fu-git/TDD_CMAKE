@@ -665,7 +665,10 @@ int *Simulate_with_partition1(std::string path, std::string file_name, std::uniq
     int node_num_final = dd->size(tdd.e);
 
     nodes[1] = node_num_final;
-    std::cout << tdd.e.w << std::endl;
+
+    dd::TDD tdd2 = dd->cont(tdd, tdd);
+    std::cout << dd->size(tdd2.e) << std::endl;
+    std::cout << tdd2.e.w.r->value << " " << tdd2.e.w.i->value << std::endl;
 
     if (release) {
         dd->decRef(tdd.e);
@@ -775,7 +778,10 @@ int *Simulate_with_partition2(std::string path, std::string file_name, std::uniq
     int node_num_final = dd->size(tdd.e);
 
     nodes[1] = node_num_final;
-    std::cout << tdd.e.w << std::endl;
+
+    dd::TDD tdd2 = dd->cont(tdd, tdd);
+    std::cout << dd->size(tdd2.e) << std::endl;
+    std::cout << tdd2.e.w.r->value << " " << tdd2.e.w.i->value << std::endl;
 
     //dd::DDdotExportMatrix(tdd.e, "ttt2");
 
@@ -988,7 +994,10 @@ int *Simulate_with_tdd(std::string path, std::string file_name, std::unique_ptr<
     }
 
 
-    std::cout << tdd.e.w << std::endl;
+    dd::TDD tdd2 = dd->cont(tdd, tdd);
+    std::cout << dd->size(tdd2.e) << std::endl;
+    std::cout << tdd2.e.w.r->value << " " << tdd2.e.w.i->value << std::endl;
+
     //std::cout << "TDD: ";
     //for (const auto& element : tdd.key_2_index) {
     //	std::cout << element << " ";

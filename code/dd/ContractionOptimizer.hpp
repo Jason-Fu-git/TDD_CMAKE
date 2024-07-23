@@ -9,6 +9,7 @@
 #include "Tdd.hpp"
 #include "Graph.hpp"
 #include "Package.hpp"
+#include "Export.hpp"
 
 
 #include <string>
@@ -61,8 +62,13 @@ public:
         auto indexSet = *index_set;
         int max_nodes = 0, final_nodes = 0;
         auto tdd = contractNode(tr->getRoot(), max_nodes, final_nodes, dd, release);
+        auto tdd1 = contractNode(tr->getRoot(), max_nodes, final_nodes, dd, release);
         // do something with the tdd
-        std::cout << tdd.e.w << std::endl;
+//        dd::serialize(tdd.e, std::cout, false);
+//        std::cout << tdd.e.w << std::endl;
+        dd::TDD tdd2 = dd->cont(tdd, tdd1);
+        std::cout << dd->size(tdd2.e) << std::endl;
+        std::cout << tdd2.e.w.r->value << " " << tdd2.e.w.i->value << std::endl;
         // delete it
         if (release)
             dd->decRef(tdd.e);
@@ -256,7 +262,8 @@ private:
 };
 
 /**
- * Optimizer based on a bottom-up greedy scheme
+ * Optimizer based on a bottom-up greedy scheme.
+ * Considering that outer product is rarely beneficial, we only consider nodes that have indices in common.
  * @see https://quantum-journal.org/papers/q-2021-03-15-410/
  * @author Jason Fu
  */
@@ -305,6 +312,8 @@ private:
 
     inline std::pair<int, int> getBestPair(const Matrix &m);;
 
+    inline bool isAdjacent(Node *lc, Node *rc);
+
     // hyper parameters
     double alpha;
     double tau;
@@ -330,8 +339,8 @@ public:
     ContractionTree *optimize() override;
 
 private:
-    ContractionTree* partition(const std::vector<int> &nodeIndexes,
-                               kahypar_context_t *context  );
+    ContractionTree *partition(const std::vector<int> &nodeIndexes,
+                               kahypar_context_t *context);
 
     double imbalance;
     kahypar_partition_id_t k;
