@@ -528,23 +528,34 @@ ContractionTree *GNCommunityOptimizer::optimize() {
 
 // O(n^2), where n is the number of gates
 Graph *GNCommunityOptimizer::constructGraph() {
-    std::vector<int> data(gate_set->size());
-    for (int i = 0; i < gate_set->size(); i++) {
-        data.push_back(i);
-    }
-    auto *graph = new Graph(data);
+    auto *graph = new Graph(gate_set->size());
+    std::map<int, std::vector<int>> edges;
     // iterate through each gate
     for (int i = 0; i < gate_set->size(); i++) {
         for (int j = i + 1; j < gate_set->size(); j++) {
             // find common indices
             for (auto &index: (*index_set)[i]) {
                 if (std::find((*index_set)[j].begin(), (*index_set)[j].end(), index) != (*index_set)[j].end()) {
-                    graph->addEdge(i, j);
+                    edges[i].emplace_back(j);
+                    edges[j].emplace_back(i);
                     break;
                 }
             }
         }
     }
+    // initialize the graph
+    for (int i = 0; i < gate_set->size(); i++) {
+        // initialize the offset
+        if (i == 0)
+            graph->nodes.emplace_back(0);
+        else
+            graph->nodes.emplace_back(graph->nodes[i - 1].offset + edges[i - 1].size());
+        // add edges
+        for (auto &j: edges[i]) {
+            graph->edges.emplace_back(i, j);
+        }
+    }
+    graph->nodes.emplace_back(graph->edges.size());
     return graph;
 }
 

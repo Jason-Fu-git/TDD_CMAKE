@@ -24,9 +24,9 @@
 using GateSet = std::map<int, gate>;
 using IndexSet = std::map<int, std::vector<dd::Index>>;
 using Node = ContractionTree::Node;
-using Graph = dd::Graph<int>;
-using GraphNode = dd::Graph<int>::GraphNode;
-using GraphEdge = dd::Graph<int>::GraphEdge;
+using Graph = dd::Graph;
+using GraphNode = dd::Graph::GraphNode;
+using GraphEdge = dd::Graph::GraphEdge;
 
 class ContractionOptimizer {
 
@@ -345,6 +345,8 @@ private:
     double imbalance;
     kahypar_partition_id_t k;
 };
+
+
 
 
 #endif //TDD_C_CONTRACTIONOPTIMIZER_HPP

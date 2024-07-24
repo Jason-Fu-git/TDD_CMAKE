@@ -10,28 +10,26 @@
 #include <queue>
 
 namespace dd {
+
     /**
-     * Graph class
-     * @tparam T type of data stored in a node
-     * @author Jason Fu
+     * Graph class for the Girvan-Newman algorithm
+     * The datastructure is adjacency array, which should be created externally.
+     * An undirected graph is represented by two directed edges.
      */
-    template<typename T>
     class Graph {
     public:
         // node structure in a graph
         struct GraphNode {
-            T data;    // data stored in the node
-            std::set<int> neighbors; // index in a GraphEdge vector
+            int offset;    // offset in the adjacency array
             // ====================================
             // variables useful in the GN algorithm
-            long long edgeCount;
             int distance;
-
+            long long edgeCount;
             // ====================================
-            explicit GraphNode(T data) : data(data), edgeCount(0), distance(-1) {}
+            explicit GraphNode(int offset = -1) : offset(offset), edgeCount(0), distance(-1) {}
 
             // reset predecessor and edgeCount
-            void reset() {
+            inline void reset() {
                 edgeCount = 0;
                 distance = -1;
             }
@@ -46,12 +44,11 @@ namespace dd {
             // variables useful in the GN algorithm
             double betweenness;
             bool removed;
-
             // ====================================
             GraphEdge(int u, int v) : u(u), v(v), betweenness(0), removed(false) {}
 
             // reset betweenness and removed
-            void reset() {
+            inline void reset() {
                 betweenness = 0;
                 removed = false;
             }
@@ -60,33 +57,20 @@ namespace dd {
                 return betweenness < other.betweenness;
             }
 
-            int neighbor(int self) const {
+            inline int neighbor(int self) const {
                 return self == u ? v : u;
             }
         };
 
+        std::vector<GraphNode> nodes; // The last element should be the length of the adjacency list (aka `edges`)
+        std::vector<GraphEdge> edges;
+
 
         // constructor
-        explicit Graph(const std::vector<T> &data) {
-            nodes.reserve(data.size());
-            for (const auto &item: data) {
-                nodes.emplace_back(item);
-            }
+        explicit Graph(int size) {
+            nodes.reserve(size + 1);
+            edges.reserve(size);
         }
-
-        /**
-         * add an edge to the graph
-         * @param u index for node u (begin in 0)
-         * @param v index for node v (begin in 0)
-         */
-        void addEdge(int u, int v) {
-            edges.emplace_back(u, v);
-            nodes[u].neighbors.insert(edges.size() - 1);
-            nodes[v].neighbors.insert(edges.size() - 1);
-        }
-
-        std::vector<GraphNode> nodes;
-        std::vector<GraphEdge> edges;
 
         /**
          * start the GN algorithm O(m^2 n)
@@ -95,17 +79,21 @@ namespace dd {
          */
         std::vector<GraphEdge> girvanNewman(){
             // start the GN algorithm
-            for (auto &edge: edges) {
-                edge.reset();
-            }
             std::vector<GraphEdge> result;
-            for (int i = 0; i < edges.size(); ++i) {
+            for (int i = 0; i < edges.size() / 2; ++i) {
                 // calculate all the edge betweenness
                 calculateEdgeBetweenness();
                 // find the edge with the highest betweenness
                 GraphEdge &maxEdge = *std::max_element(edges.begin(), edges.end());
                 // remove the edge
                 maxEdge.removed = true;
+                // remove the corresponding edge in the adjacency list
+                for(int j = nodes[maxEdge.v].offset; j < nodes[maxEdge.v + 1].offset; ++j){
+                    if (edges[j].v == maxEdge.u) {
+                        edges[j].removed = true;
+                        break;
+                    }
+                }
                 // push to the result
                 result.push_back(maxEdge);
             }
@@ -119,7 +107,7 @@ namespace dd {
             for (auto &edge: edges) {
                 edge.betweenness = 0;
             }
-            for (int i = 0 ; i < nodes.size(); ++i) {
+            for (int i = 0 ; i < nodes.size() - 1; ++i) {
                 for (auto &node: nodes) {
                     node.reset();
                 }
@@ -141,10 +129,10 @@ namespace dd {
                 auto u = q.front();
                 q.pop();
                 // iterate through its neighbors
-                for (auto &neighbor: nodes[u].neighbors) {
-                    auto &edge = edges[neighbor];
+                for (int i = nodes[u].offset; i < nodes[u + 1].offset; ++i) {
+                    auto &edge = edges[i];
                     if (!edge.removed) {
-                        int v = edge.neighbor(u);
+                        int v = edge.v;
                         // undiscovered
                         if (nodes[v].distance == -1) {
                             nodes[v].distance = nodes[u].distance + 1;
