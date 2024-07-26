@@ -151,6 +151,39 @@ float ContractionOptimizer::match_a_string(std::string s) {
     return 0.0;
 }
 
+// O(n^2), where n is the number of gates
+Graph *ContractionOptimizer::constructGraph() {
+    auto *graph = new Graph(gate_set->size());
+    std::map<int, std::vector<int>> edges;
+    // iterate through each gate
+    for (int i = 0; i < gate_set->size(); i++) {
+        for (int j = i + 1; j < gate_set->size(); j++) {
+            // find common indices
+            for (auto &index: (*index_set)[i]) {
+                if (std::find((*index_set)[j].begin(), (*index_set)[j].end(), index) != (*index_set)[j].end()) {
+                    edges[i].emplace_back(j);
+                    edges[j].emplace_back(i);
+                    break;
+                }
+            }
+        }
+    }
+    // initialize the graph
+    for (int i = 0; i < gate_set->size(); i++) {
+        // initialize the offset
+        if (i == 0)
+            graph->nodes.emplace_back(0);
+        else
+            graph->nodes.emplace_back(graph->nodes[i - 1].offset + edges[i - 1].size());
+        // add edges
+        for (auto &j: edges[i]) {
+            graph->edges.emplace_back(i, j);
+        }
+    }
+    graph->nodes.emplace_back(graph->edges.size());
+    return graph;
+}
+
 
 std::vector<std::string> ContractionOptimizer::split(const std::string &s, const std::string &seperator) {
     std::vector<std::string> result;
@@ -518,46 +551,20 @@ ContractionTree *PartitionScheme2Optimizer::optimize() {
 ContractionTree *GNCommunityOptimizer::optimize() {
     // convert the circuit to a graph
     Graph *graph = constructGraph();
-    // perform GN algorithm to find communities
-    auto edgeOrder = graph->girvanNewman();
-    // build a contraction tree based on the order
-    auto *tr = buildTreeFromGraph(edgeOrder);
+    ContractionTree *tr;
+    if (graph->edges.size() < 600) {
+        // perform GN algorithm to find communities, O(m^2 n)
+        auto edgeOrder = graph->girvanNewman();
+        // build a contraction tree based on the order
+        tr = buildTreeFromGraph(edgeOrder);
+    } else {
+        // perform fast GN algorithm, O(n(n+m))
+        tr = buildTreeFromGraphFast(graph);
+    }
     delete graph;
     return tr;
 }
 
-// O(n^2), where n is the number of gates
-Graph *GNCommunityOptimizer::constructGraph() {
-    auto *graph = new Graph(gate_set->size());
-    std::map<int, std::vector<int>> edges;
-    // iterate through each gate
-    for (int i = 0; i < gate_set->size(); i++) {
-        for (int j = i + 1; j < gate_set->size(); j++) {
-            // find common indices
-            for (auto &index: (*index_set)[i]) {
-                if (std::find((*index_set)[j].begin(), (*index_set)[j].end(), index) != (*index_set)[j].end()) {
-                    edges[i].emplace_back(j);
-                    edges[j].emplace_back(i);
-                    break;
-                }
-            }
-        }
-    }
-    // initialize the graph
-    for (int i = 0; i < gate_set->size(); i++) {
-        // initialize the offset
-        if (i == 0)
-            graph->nodes.emplace_back(0);
-        else
-            graph->nodes.emplace_back(graph->nodes[i - 1].offset + edges[i - 1].size());
-        // add edges
-        for (auto &j: edges[i]) {
-            graph->edges.emplace_back(i, j);
-        }
-    }
-    graph->nodes.emplace_back(graph->edges.size());
-    return graph;
-}
 
 ContractionTree *GNCommunityOptimizer::buildTreeFromGraph(const std::vector<GraphEdge> &edgeOrder) {
     auto *tr = new ContractionTree(index_width);
@@ -594,6 +601,113 @@ ContractionTree *GNCommunityOptimizer::buildTreeFromGraph(const std::vector<Grap
     return tr;
 }
 
+ContractionTree *GNCommunityOptimizer::buildTreeFromGraphFast(Graph *graph) {
+    auto tr = new ContractionTree(index_width);
+    auto **e = new int *[gate_set->size()];
+    auto *a = new int[gate_set->size()];
+    double m = graph->edges.size();
+    for (int i = 0; i < gate_set->size(); i++) {
+        e[i] = new int[gate_set->size()];
+        a[i] = 0;
+        for (int j = 0; j < gate_set->size(); j++) {
+            e[i][j] = 0;
+        }
+        for (int j = graph->nodes[i].offset; j < graph->nodes[i + 1].offset; j++) {
+            e[i][graph->edges[j].v] = 1;
+            a[i] += 1;
+        }
+    }
+    // convert graph structure
+    std::vector<std::set<int> > edges;
+    for (int i = 0; i < gate_set->size(); i++) {
+        edges.emplace_back();
+    }
+    for (auto &edge: graph->edges) {
+        edges[edge.u].insert(edge.v);
+    }
+    // construct gate nodes
+    std::vector<Node *> nodes;
+    for (int i = 0; i < gate_set->size(); i++) {
+        auto *node = tr->constructNode(index_set->at(i), i);
+        nodes.push_back(node);
+    }
+    // O(n(n+m))
+    while (true) {
+        double max_delta_Q = -1e37;
+        int max_u = -1;
+        int max_v = -1;
+        // O(m)
+        for (int u = 0; u < edges.size(); u++) {
+            for (auto &v: edges[u]) {
+                // only consider adjacent nodes
+                if (e[u][v] == 0)
+                    continue;
+                double delta_Q = (e[u][v] / m - a[u] * a[v] / m / m) * 2;
+                if (delta_Q > max_delta_Q) {
+                    max_delta_Q = delta_Q;
+                    max_u = u;
+                    max_v = v;
+                }
+            }
+        }
+        if (max_u == -1 || max_v == -1) break;
+        // contract u and v
+        assert(nodes[max_u] && nodes[max_v]);
+        auto p = tr->constructParent(nodes[max_u], nodes[max_v]);
+        // update nodes set
+        nodes[max_u] = p;
+        nodes[max_v] = nullptr;
+        // O(n)
+        // update matrix
+        for (auto v: edges[max_u]) {
+            // update u, where edge u-j exists
+            e[max_u][v] += e[max_v][v];
+            e[v][max_u] += e[v][max_v];
+            a[max_u] += e[max_v][v];
+            a[v] += e[v][max_v];
+        }
+
+        for (auto v: edges[max_v]) {
+            // update u, where edge v-j exists but not u-j
+            if (e[max_u][v] == 0) {
+                e[max_u][v] = e[max_v][v];
+                e[v][max_u] = e[v][max_v];
+                a[max_u] += e[max_v][v];
+                a[v] += e[v][max_v];
+                if (v != max_u) {
+                    edges[max_u].insert(v);
+                    edges[v].insert(max_u);
+                }
+            }
+            // empty v
+            e[v][max_v] = 0;
+            e[max_v][v] = 0;
+            edges[v].erase(max_v);
+            a[v] -= 1;
+        }
+        edges[max_v].clear();
+        a[max_v] = 0;
+
+
+    }
+    // contract the disjoint nodes
+    Node *n = nullptr;
+    for (int i = 0; i < gate_set->size(); i++) {
+        if (nodes[i] != nullptr) {
+            if (n == nullptr) n = nodes[i];
+            else n = tr->constructParent(n, nodes[i]);
+        }
+    }
+    tr->getRoot() = n;
+    // free up space
+    for (int i = 0; i < gate_set->size(); i++) {
+        delete[] e[i];
+    }
+    delete[] e;
+    delete[] a;
+    return tr;
+}
+
 int ContractionOptimizer::unionFind(const std::vector<int> &unionFindSet, int s) {
     while (unionFindSet[s] != s)
         s = unionFindSet[s];
@@ -604,25 +718,22 @@ int ContractionOptimizer::unionFind(const std::vector<int> &unionFindSet, int s)
 // GreedyOptimizer
 // ===============================================================================
 
-// O(n^3)
+// O(n*m)
 ContractionTree *GreedyOptimizer::optimize() {
     auto *tr = new ContractionTree(index_width);
-    Matrix matrix(gate_set->size(), gate_set->size());
+    std::vector<std::set<Edge>> edges;
     // construct gate nodes
     std::vector<Node *> nodes;
     for (int i = 0; i < gate_set->size(); i++) {
         nodes.push_back(tr->constructNode(index_set->at(i), i));
+        edges.emplace_back();
     }
     // calculate contraction costs between two arbitrary gates
     for (int i = 0; i < gate_set->size(); i++) {
         for (int j = 0; j < gate_set->size(); j++) {
             if (i != j) {
                 if (isAdjacent(nodes[i], nodes[j]))
-                    matrix.set(i, j, calculateCost(nodes[i], nodes[j]));
-                else
-                    matrix.setNull(i, j);
-            } else {
-                matrix.setNull(i, j);
+                    edges[i].insert({i, j, calculateCost(nodes[i], nodes[j])});
             }
         }
     }
@@ -630,10 +741,10 @@ ContractionTree *GreedyOptimizer::optimize() {
     // gate_set.size() - 1 times contraction
     while (true) {
         // return the next pair
-        auto [u, v] = getBestPair(matrix);
+        auto [u, v] = getBestPair(edges);
         if (u == -1 && v == -1) break;
         // contract v into u
-        assert(isAdjacent(nodes[u], nodes[v]));
+        assert(nodes[u] && nodes[v]);
         auto p = tr->constructParent(nodes[u], nodes[v]);
         // update nodes set
         nodes[u] = p;
@@ -641,19 +752,16 @@ ContractionTree *GreedyOptimizer::optimize() {
         // update matrix
         for (int j = 0; j < gate_set->size(); j++) {
             // empty v
-            matrix.setNull(v, j);
-            matrix.setNull(j, v);
+            edges[j].erase({j, v, 0});
             // update new contraction cost
             if (j != u) {
                 if (isAdjacent(nodes[u], nodes[j])) {
-                    matrix.set(u, j, calculateCost(nodes[u], nodes[j]));
-                    matrix.set(j, u, calculateCost(nodes[j], nodes[u]));
-                } else {
-                    matrix.setNull(u, j);
-                    matrix.setNull(j, u);
+                    edges[u].insert({u, j, calculateCost(nodes[u], nodes[j])});
+                    edges[j].insert({j, u, calculateCost(nodes[j], nodes[u])});
                 }
             }
         }
+        edges[v].clear();
     }
     // contract the disjoint nodes
     Node *n = nullptr;
@@ -667,21 +775,21 @@ ContractionTree *GreedyOptimizer::optimize() {
     return tr;
 }
 
-std::pair<int, int> GreedyOptimizer::getBestPair(const GreedyOptimizer::Matrix &m) {
+std::pair<int, int> GreedyOptimizer::getBestPair(const std::vector<std::set<Edge> > &m) {
     // find the pair with the minimum cost
-    int index = 0;
+    Edge edge{};
     double min_cost = 1e20;
-    for (int i = 0; i < m.rows; i++) {
-        for (int j = 0; j < m.cols; j++) {
-            if (m.at(i, j) < min_cost) {
-                min_cost = m.at(i, j);
-                index = i * m.cols + j;
+    for (const auto &i: m) {
+        for (auto &e: i) {
+            if (e.w < min_cost) {
+                min_cost = e.w;
+                edge = e;
             }
         }
     }
     if (min_cost == 1e20)
         return {-1, -1};
-    return {index / m.cols, index % m.cols};
+    return {edge.u, edge.v};
 }
 
 double GreedyOptimizer::calculateCost(Node *lc, Node *rc) {
@@ -717,16 +825,29 @@ bool GreedyOptimizer::isAdjacent(Node *lc, Node *rc) {
 
 ContractionTree *KahyparOptimizer::optimize() {
     // build graph
-    std::vector<kahypar_partition_id_t> indices;
-    for (int i = 0; i < gate_set->size(); ++i) {
-        indices.push_back(i);
+    Graph *graph = constructGraph();
+    auto cc = graph->getConnectedComponents();
+    std::vector<std::vector<kahypar_partition_id_t> > indexSet;
+    // build index set
+    for (auto &c: cc) {
+        std::vector<kahypar_partition_id_t> temp;
+        for (int i = 0; i < c->nodes.size() - 1; i++) {
+            temp.push_back(c->edges[c->nodes[i].offset].u);
+        }
+        indexSet.push_back(temp);
     }
     // initialize the partitionVec scheme
     kahypar_context_t *context = kahypar_context_new();
     // replace this with your own configuration
     kahypar_configure_context_from_file(context, "config/kahypar_config.ini");
-    // start partitioning
-    auto tr = partition(indices, context);
+    // start partitioning for each connected component
+    ContractionTree *tr = nullptr;
+    for (auto &indices: indexSet) {
+        if (tr)
+            tr = ContractionTree::concat(partition(indices, context), tr, index_width);
+        else
+            tr = partition(indices, context);
+    }
     return tr;
 }
 

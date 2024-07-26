@@ -173,6 +173,9 @@ int main(int argc, char *argv[]) {
     std::cout << "Nodes Final:" << *(nodes + 1) << std::endl;
     std::cout << "===================================" << std::endl;
 
+    std::cout << "File name:" << file_name << std::endl;
+    std::cout << "KaHyPar" << std::endl;
+
     auto dd9 = std::make_unique<dd::Package<>>(4 * n);
     nodes = Simulate_with_ContractionOptimizer(path2, file_name, dd9, OptimizingMethod::KAHYPAR);
     std::cout << "Nodes max:" << *nodes << std::endl;

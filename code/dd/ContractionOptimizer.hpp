@@ -78,6 +78,8 @@ public:
     }
 
 protected:
+    // parse the circuit into a graph
+    Graph *constructGraph();
 
     // contract in a recursive manner
     dd::TDD
@@ -254,11 +256,11 @@ public:
     ContractionTree *optimize() override;
 
 private:
-    // parse the circuit into a graph
-    Graph *constructGraph();
-
-    // build the contraction tree from the graph
+    // build the contraction tree from the graph (GN algorithm)
     ContractionTree *buildTreeFromGraph(const std::vector<GraphEdge> &edgeOrder);
+
+    // build the contraction tree from the graph (fast GN algorithm)
+    ContractionTree *buildTreeFromGraphFast(Graph* graph);
 };
 
 /**
@@ -296,6 +298,20 @@ public:
         }
     };
 
+    struct Edge{
+        int u;
+        int v;
+        double w;
+
+        bool operator<(const Edge& e) const {
+            return v < e.v;
+        }
+
+        bool operator==(const Edge& e) const {
+            return u == e.u && v == e.v;
+        }
+    };
+
     explicit GreedyOptimizer(int num_qubits, GateSet *gates, IndexSet *indexes, double alpha, double tau,
                              int _index_width = 2)
             : ContractionOptimizer(num_qubits, gates, indexes, _index_width), alpha(alpha), tau(tau) {
@@ -310,9 +326,9 @@ private:
      */
     inline double calculateCost(Node *lc, Node *rc);
 
-    inline std::pair<int, int> getBestPair(const Matrix &m);;
+    static inline std::pair<int, int> getBestPair(const std::vector<std::set<Edge> > &m);;
 
-    inline bool isAdjacent(Node *lc, Node *rc);
+    static inline bool isAdjacent(Node *lc, Node *rc);
 
     // hyper parameters
     double alpha;
