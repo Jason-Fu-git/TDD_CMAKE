@@ -5,7 +5,7 @@ on:
   push:
     branches: [master]
 concurrency:
-  group: ${{ github.workflow }}-${{ github.job }}-${{ github.ref }}
+  group: ${{ github.workflows }}-${{ github.job }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
