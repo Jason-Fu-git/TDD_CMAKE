@@ -7,46 +7,83 @@
 
 #include "libkahypar.h"
 
+#include <chrono>
 #include <algorithm>
 #include <random>
+
+#define TIMEOUT 200
 
 // =============
 // Base Class
 // =============
 
 dd::TDD
-ContractionOptimizer::contractNode(Node *node, int &max_nodes, int &final_nodes, std::unique_ptr<dd::Package<>> &dd,
+ContractionOptimizer::contractNode(std::vector<Node *> &stack, int &max_nodes, int &final_nodes,
+                                   std::unique_ptr<dd::Package<>> &dd,
                                    bool release) {
-    assert(node != nullptr);
+    std::vector<dd::TDD> tdds;
+    tdds.reserve(gate_set->size());
+    auto time_start = std::chrono::high_resolution_clock::now();
+    while (!stack.empty()) {
+        auto node = stack.back();
+        if (node->isLeaf()) {
+            auto tdd = constructGate(gate_set->at(node->gate_idx).name, index_set->at(node->gate_idx), dd);
+            tdds.push_back(tdd);
+            node->tdd_idx = (int) tdds.size() - 1;
+            if (release)
+                dd->incRef(tdd.e);
+            // calculate node num
+            final_nodes = dd->size(tdd.e);
+            max_nodes = std::max(max_nodes, final_nodes);
+            stack.pop_back();
+        } else {
+            int lc_idx = -1;
+            int rc_idx = -1;
+            if (node->lc) {
+                if (node->lc->tdd_idx == -1)
+                    stack.push_back(node->lc);
+                else
+                    lc_idx = node->lc->tdd_idx;
+            }
+            if (node->rc) {
+                if (node->rc->tdd_idx == -1)
+                    stack.push_back(node->rc);
+                else
+                    rc_idx = node->rc->tdd_idx;
+            }
 
-    dd::TDD tdd;
-    if (node->isLeaf()) {
-        tdd = constructGate(gate_set->at(node->gate_idx).name, index_set->at(node->gate_idx), dd);
-//        printf("Leaf node: %d\n", node->gate_idx);
-        if (release)
-            dd->incRef(tdd.e);
-    } else {
-        if (node->lc == nullptr)
-            return contractNode(node->rc, max_nodes, final_nodes, dd, release);
-
-        if (node->rc == nullptr)
-            return contractNode(node->lc, max_nodes, final_nodes, dd, release);
-
-        auto lc = contractNode(node->lc, max_nodes, final_nodes, dd, release);
-        auto rc = contractNode(node->rc, max_nodes, final_nodes, dd, release);
-        tdd = dd->cont(lc, rc);
-        if (release) {
-            dd->decRef(lc.e);
-            dd->decRef(rc.e);
-            dd->incRef(tdd.e);
+            if (lc_idx == -1)
+                node->tdd_idx = rc_idx;
+            else if (rc_idx == -1)
+                node->tdd_idx = lc_idx;
+            else {
+                // contract two TDDs
+                auto lc = tdds[lc_idx];
+                auto rc = tdds[rc_idx];
+                auto tdd = dd->cont(lc, rc);
+                if (release) {
+                    dd->decRef(lc.e);
+                    dd->decRef(rc.e);
+                    dd->incRef(tdd.e);
+                }
+                tdds.push_back(tdd);
+                node->tdd_idx = (int) tdds.size() - 1;
+                // calculate node num
+                final_nodes = dd->size(tdd.e);
+                max_nodes = std::max(max_nodes, final_nodes);
+                stack.pop_back();
+            }
         }
+        auto time_end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::seconds>(time_end - time_start).count();
+        if (duration > TIMEOUT)
+            break;
     }
-    // calculate node num
-    final_nodes = dd->size(tdd.e);
-    max_nodes = std::max(max_nodes, final_nodes);
+
+    auto finalTDD = tdds.back();
     // collect garbage
     dd->garbageCollect();
-    return tdd;
+    return finalTDD;
 }
 
 dd::TDD ContractionOptimizer::constructGate(std::string nam, const std::vector<dd::Index> &indexSet,

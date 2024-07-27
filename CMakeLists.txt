@@ -9,7 +9,7 @@ link_directories(/usr/local/lib)
 add_subdirectory(code/deps/xtl)
 add_subdirectory(code/deps/xtensor)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
 include_directories(code)
 include_directories(code/dd)

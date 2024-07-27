@@ -61,14 +61,15 @@ public:
         auto gateSet = *gate_set;
         auto indexSet = *index_set;
         int max_nodes = 0, final_nodes = 0;
-        auto tdd = contractNode(tr->getRoot(), max_nodes, final_nodes, dd, release);
-        auto tdd1 = contractNode(tr->getRoot(), max_nodes, final_nodes, dd, release);
+        std::vector<Node *> stack = {tr->getRoot()};
+        auto tdd = contractNode(stack, max_nodes, final_nodes, dd, release);
+//        auto tdd1 = contractNode(tr->getRoot(), max_nodes, final_nodes, dd, release);
         // do something with the tdd
 //        dd::serialize(tdd.e, std::cout, false);
-//        std::cout << tdd.e.w << std::endl;
-        dd::TDD tdd2 = dd->cont(tdd, tdd1);
-        std::cout << dd->size(tdd2.e) << std::endl;
-        std::cout << tdd2.e.w.r->value << " " << tdd2.e.w.i->value << std::endl;
+        std::cout << tdd.e.w << std::endl;
+//        dd::TDD tdd2 = dd->cont(tdd, tdd1);
+//        std::cout << dd->size(tdd2.e) << std::endl;
+//        std::cout << tdd2.e.w.r->value << " " << tdd2.e.w.i->value << std::endl;
         // delete it
         if (release)
             dd->decRef(tdd.e);
@@ -81,9 +82,10 @@ protected:
     // parse the circuit into a graph
     Graph *constructGraph();
 
-    // contract in a recursive manner
+    // contract using stack
     dd::TDD
-    contractNode(Node *node, int &max_nodes, int &final_nodes, std::unique_ptr<dd::Package<>> &dd, bool release);
+    contractNode(std::vector<Node *> &stack, int &max_nodes, int &final_nodes, std::unique_ptr<dd::Package<>> &dd,
+                 bool release);
 
     // construct a TDD from a gate
     // the parser is copied from Cir_import.h
@@ -260,7 +262,7 @@ private:
     ContractionTree *buildTreeFromGraph(const std::vector<GraphEdge> &edgeOrder);
 
     // build the contraction tree from the graph (fast GN algorithm)
-    ContractionTree *buildTreeFromGraphFast(Graph* graph);
+    ContractionTree *buildTreeFromGraphFast(Graph *graph);
 };
 
 /**
@@ -298,16 +300,16 @@ public:
         }
     };
 
-    struct Edge{
+    struct Edge {
         int u;
         int v;
         double w;
 
-        bool operator<(const Edge& e) const {
+        bool operator<(const Edge &e) const {
             return v < e.v;
         }
 
-        bool operator==(const Edge& e) const {
+        bool operator==(const Edge &e) const {
             return u == e.u && v == e.v;
         }
     };
@@ -361,8 +363,6 @@ private:
     double imbalance;
     kahypar_partition_id_t k;
 };
-
-
 
 
 #endif //TDD_C_CONTRACTIONOPTIMIZER_HPP

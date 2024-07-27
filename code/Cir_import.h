@@ -24,7 +24,7 @@
 #include <queue>
 #include <set>
 #include <regex>
-#include <ctime>
+#include <chrono>
 #include <cmath>
 
 enum OptimizingMethod {
@@ -804,7 +804,7 @@ int *Simulate_with_partition2(std::string path, std::string file_name, std::uniq
  * @author Jason Fu
  */
 int *Simulate_with_ContractionOptimizer(std::string path, std::string file_name, std::unique_ptr<dd::Package<>> &dd,
-                                        int method) {
+                                        int method, std::ofstream *fout = nullptr) {
     // import and preprocess the circuit
     std::map<int, gate> gate_set = import_circuit(path + file_name);
 
@@ -816,7 +816,7 @@ int *Simulate_with_ContractionOptimizer(std::string path, std::string file_name,
 
     dd->varOrder = var;
 
-    auto start_optimize = clock();
+    auto start_optimize = std::chrono::high_resolution_clock::now();
 
     // perform optimization
     ContractionTree *tree = nullptr;
@@ -851,18 +851,27 @@ int *Simulate_with_ContractionOptimizer(std::string path, std::string file_name,
     std::cout << "Contraction cost: " << tree->getCost() << std::endl;
     std::cout << "Tree size: " << tree->getSize() << std::endl;
 
-    auto end_optimize = clock();
-    std::cout << "Optimization time: " << (double) (end_optimize - start_optimize) / CLOCKS_PER_SEC << " s"
+    auto end_optimize = std::chrono::high_resolution_clock::now();
+    std::cout << "Optimization time: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(end_optimize - start_optimize).count() << " ms"
               << std::endl;
 
-    auto start_simulate = clock();
+    auto start_simulate = std::chrono::high_resolution_clock::now();
 
     // perform contraction
     auto result = optimizer->contract(tree, dd, release);
 
-    auto end_simulate = clock();
-    std::cout << "Contraction time: " << (double) (end_simulate - start_simulate) / CLOCKS_PER_SEC << " s" << std::endl;
+    auto end_simulate = std::chrono::high_resolution_clock::now();
+    std::cout << "Contraction time: " <<
+              std::chrono::duration_cast<std::chrono::milliseconds>(end_simulate - start_simulate).count() << " ms"
+              << std::endl;
 
+    // optional : print benchmark information
+    if (fout) {
+        *fout << file_name << "," << gate_set.size() << ","
+              << std::chrono::duration_cast<std::chrono::milliseconds>(end_simulate - start_simulate).count() << "," << result[0] << "," << result[1]
+              << "," << tree->getCost() << std::endl;
+    }
 
     // delete the pointers
     delete tree;

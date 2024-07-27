@@ -47,10 +47,11 @@ public:
         std::set<Index> indexes; // indexes the node contains
         double cost; // contraction cost for the subtree represented by the node (log2)
         int gate_idx; // non-negative value represents a leaf, -1 represents a non-leaf
+        int tdd_idx{}; // index of the TDD node in the TDD vector
 
         // constructors
         explicit Node(std::set<Index> *idxSet, int _gate_idx = -1) :
-                parent(nullptr), lc(nullptr), rc(nullptr), cost(0), gate_idx(_gate_idx) {
+                parent(nullptr), lc(nullptr), rc(nullptr), cost(0), gate_idx(_gate_idx), tdd_idx(-1) {
             if (idxSet != nullptr) {
                 for (const auto &idx: *idxSet) {
                     indexes.insert(idx);
@@ -59,7 +60,7 @@ public:
         }
 
         explicit Node(const std::vector<Index> &idxSet, int _gate_idx = -1) :
-                parent(nullptr), lc(nullptr), rc(nullptr), cost(0), gate_idx(_gate_idx),
+                parent(nullptr), lc(nullptr), rc(nullptr), cost(0), gate_idx(_gate_idx), tdd_idx(-1),
                 indexes(idxSet.begin(), idxSet.end()) {}
 
         Node(const Node &n) : parent(n.parent), lc(n.lc), rc(n.rc), indexes(n.indexes), cost(n.cost),
@@ -74,6 +75,7 @@ public:
             indexes = n.indexes;
             cost = n.cost;
             gate_idx = n.gate_idx;
+            tdd_idx = n.tdd_idx;
             return *this;
         }
 
