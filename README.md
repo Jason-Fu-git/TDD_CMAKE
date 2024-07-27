@@ -2,9 +2,11 @@
 
 <div align='left'>
     <img src="https://img.shields.io/badge/License-MIT%20License-purple" alt="Static Badge" />
+    <img src="https://github.com/Jason-Fu-git/TDD_CMAKE/actions/workflows/tdd_ci.yml/badge.svg"/>
 </div>
 
 ## Overview
+
 Decision diagrams have been used in the simulation and equivalence checking of quantum circuits. Inspired by the efficiency and flexibility of Tensor Networks. 
 A tensor network-based decision diagram has been proposed at https://dl.acm.org/doi/10.1145/3514355. 
 This repository gives a C++ implementation of the Tensor Decision Diagram(TDD), 
@@ -50,5 +52,4 @@ should better be Linux. We haven't tested the benchmarks on Windows or MacOS.
 The visualization of the results is as follows:
 
 ![benchmark](Benchmarks/result/CombinedPlot.png)
-
 
