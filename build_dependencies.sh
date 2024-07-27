@@ -1,5 +1,6 @@
 cd code/deps/kahypar
-ls
-mkdir build || cd build
-cmake .. -DCMAKE_BUILD_TYPE=RELEASE
+mkdir build
+cmake -B build -DCMAKE_BUILD_TYPE=RELEASE
+cmake --build build
+cd build
 sudo make install.library
