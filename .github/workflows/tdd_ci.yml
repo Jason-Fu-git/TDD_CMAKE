@@ -20,7 +20,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y g++ cmake libboost-all-dev
 
       - name: Build dependencies
-        run: ./build_dependences.sh
+        run: chmod +x build_dependencies.sh && ./build_dependencies.sh
 
       - name: Run tests
-        run: ./test.sh
+        run: chmod +x test.sh && ./test.sh
