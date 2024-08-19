@@ -20,16 +20,23 @@
 dd::TDD
 ContractionOptimizer::contractNode(std::vector<Node *> &stack, int &max_nodes, int &final_nodes,
                                    std::unique_ptr<dd::Package<>> &dd,
-                                   bool release) {
+                                   bool release, bool print) {
     std::vector<dd::TDD> tdds;
+    std::vector<std::vector<int> > indexes;
     tdds.reserve(gate_set->size());
     auto time_start = std::chrono::high_resolution_clock::now();
     while (!stack.empty()) {
         auto node = stack.back();
+        // leaf node
         if (node->isLeaf()) {
+            // construct a tdd based on the gate the leaf node represents
             auto tdd = constructGate(gate_set->at(node->gate_idx).name, index_set->at(node->gate_idx), dd);
             tdds.push_back(tdd);
+
+            if (print)
+                indexes.push_back({node->gate_idx});
             node->tdd_idx = (int) tdds.size() - 1;
+
             if (release)
                 dd->incRef(tdd.e);
             // calculate node num
@@ -61,6 +68,37 @@ ContractionOptimizer::contractNode(std::vector<Node *> &stack, int &max_nodes, i
                 auto lc = tdds[lc_idx];
                 auto rc = tdds[rc_idx];
                 auto tdd = dd->cont(lc, rc);
+                if (print) {
+                    indexes.push_back(indexes[lc_idx]);
+                    indexes.back().insert(indexes.back().end(), indexes[rc_idx].begin(), indexes[rc_idx].end());
+                    std::sort(indexes.back().begin(), indexes.back().end());
+                    std::cout << "Contracting (";
+                    for (auto &i: indexes[lc_idx]) {
+                        std::cout << i << " ";
+                    }
+                    std::cout << ") and (";
+                    for (auto &i: indexes[rc_idx]) {
+                        std::cout << i << " ";
+                    }
+                    std::cout << ") tdd size: " << dd->size(tdds[lc_idx].e) << " x " << dd->size(tdds[rc_idx].e)
+                              << " = " << dd->size(tdd.e) << std::endl;
+                    // print tdd index information
+                    std::cout << "  Index set: [";
+                    for (auto &i: lc.index_set) {
+                        std::cout << i.key << " ";
+                    }
+                    std::cout << "] x [";
+                    for (auto &i: rc.index_set) {
+                        std::cout << i.key << " ";
+                    }
+                    std::cout << "] = [";
+                    for (auto &i: tdd.index_set) {
+                        std::cout << i.key << " ";
+                    }
+                    std::cout << "]" ;
+                    std::cout << " Index set size: " << lc.index_set.size() << " x " << rc.index_set.size() << " = "
+                              << tdd.index_set.size() << std::endl;
+                }
                 if (release) {
                     dd->decRef(lc.e);
                     dd->decRef(rc.e);

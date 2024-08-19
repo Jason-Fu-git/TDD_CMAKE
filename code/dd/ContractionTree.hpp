@@ -6,10 +6,12 @@
 #define TDD_C_CONTRACTIONTREE_HPP
 
 #include "string"
+#include "iostream"
 #include "map"
 #include "set"
 #include "vector"
 #include "dd/Tdd.hpp"
+
 
 struct gate {
     std::string name;
@@ -47,7 +49,7 @@ public:
         std::set<Index> indexes; // indexes the node contains
         double cost; // contraction cost for the subtree represented by the node (log2)
         int gate_idx; // non-negative value represents a leaf, -1 represents a non-leaf
-        int tdd_idx{}; // index of the TDD node in the TDD vector
+        int tdd_idx; // index of the TDD node in the TDD vector
 
         // constructors
         explicit Node(std::set<Index> *idxSet, int _gate_idx = -1) :
@@ -314,6 +316,268 @@ public:
         if (a - b > 10)
             return a;
         return a + log(1 - pow(w, b - a)) * log(w);
+    }
+
+    /**
+     * Print the quantum circuit in a human-readable format
+     * @param gateSet
+     * @param qubitNum
+     * @param printIndex
+     * @author Jason Fu
+     *
+     */
+    static void printQuantumCircuit(const std::map<int, gate> &gateSet, int qubitNum, bool printIndex) {
+        gate placeholder;
+        int maxNameWidth = 0;
+        int gateIdx = 0;
+        int maxVectorLength = 0;
+        // reorganize the gate set by qubit
+        std::vector<std::vector<gate>> qubitGateSet;
+        qubitGateSet.reserve(qubitNum);
+        for (int i = 0; i < qubitNum; ++i) {
+            qubitGateSet.emplace_back();
+        }
+
+        for (auto &g: gateSet) {
+            auto gate = g.second;
+
+            if (gate.name.size() > maxNameWidth) {
+                maxNameWidth = gate.name.size();
+            }
+
+            // only support cx gate as 2-qubit gate
+            if (gate.name == "cx") {
+                int control = gate.qubits[0];
+                int target = gate.qubits[1];
+                // pad the wires with placeholders
+                for (int i = 0; i < qubitNum; ++i) {
+                    while (qubitGateSet[i].size() < maxVectorLength) {
+                        qubitGateSet[i].push_back(placeholder);
+                    }
+                }
+                // push the cx gate
+                qubitGateSet[control].push_back(gate);
+                qubitGateSet[target].push_back(gate);
+                qubitGateSet[control].back().name = "cx";
+                qubitGateSet[target].back().name = printIndex ? "x " + std::to_string(gateIdx++) : "x";
+
+                // pad the wires in between
+                int lesser = control < target ? control : target;
+                int greater = control > target ? control : target;
+                for (int i = lesser + 1; i < greater; i++) {
+                    qubitGateSet[i].push_back(placeholder);
+                    qubitGateSet[i].back().name = "cr"; // cross
+                }
+
+                // update the max vector length
+                if (qubitGateSet[control].size() > maxVectorLength) {
+                    maxVectorLength = qubitGateSet[control].size();
+                }
+            } else {
+                qubitGateSet[gate.qubits[0]].push_back(gate);
+                if (printIndex) {
+                    qubitGateSet[gate.qubits[0]].back().name = gate.name + " " + std::to_string(gateIdx++);
+                }
+
+                // update the max vector length
+                if (qubitGateSet[gate.qubits[0]].size() > maxVectorLength) {
+                    maxVectorLength = qubitGateSet[gate.qubits[0]].size();
+                }
+            }
+        }
+
+        // pad all the vectors
+        for (int i = 0; i < qubitNum; ++i) {
+            while (qubitGateSet[i].size() < maxVectorLength) {
+                qubitGateSet[i].push_back(placeholder);
+            }
+        }
+
+        if (printIndex) {
+            maxNameWidth += 2 + (int) log10(gateIdx);
+        }
+        // print the circuit
+
+        // gate figure
+        std::string upperLeft = "┌";
+        std::string upper = "─";
+        std::string upperRight = "┐";
+        std::string left = "┤";
+        std::string right = "├";
+        std::string lowerLeft = "└";
+        std::string lower = "─";
+        std::string lowerRight = "┘";
+
+        // cx figure
+        std::string control = "■";
+        std::string cross = "┼";
+
+        // wire
+        std::string hwire = "─";
+        std::string vwire = "│";
+
+        // space
+        std::string space = " ";
+
+        // draw the circuit
+        int width = maxNameWidth % 2 == 0 ? maxNameWidth + 3 : maxNameWidth + 2;
+        int center = width / 2;
+        int maxDisplay = 150 / width;
+        int blockNum = maxVectorLength / maxDisplay + 1;
+        int qubitLabelWidth = 2 + (int) log10(qubitNum) + 1;
+
+        for (int blockIdx = 0; blockIdx < blockNum; blockIdx++) {
+            for (int qubit = 0; qubit < qubitNum; qubit++) {
+                // each wire occupies three lines
+                for (int line = 0; line < 3; line++) {
+                    // print arrow
+                    if (blockIdx > 0)
+                        std::cout << "«";
+                    else
+                        std::cout << space;
+
+                    // print qubit label
+                    int spaceCount = qubitLabelWidth + 1;
+                    if (line == 1) {
+                        std::cout << "q_" << std::to_string(qubit);
+                        if (qubit > 0)
+                            spaceCount -= 2 + (int) log10(qubit) + 1;
+                        else
+                            spaceCount -= 3;
+                    }
+                    for (int i = 0; i < spaceCount; i++) {
+                        std::cout << space;
+                    }
+
+                    // print gate
+                    for (gateIdx = blockIdx * maxDisplay;
+                         gateIdx < blockIdx * maxDisplay + maxDisplay; gateIdx++) {
+                        if (gateIdx >= maxVectorLength)
+                            break;
+                        auto &gate = qubitGateSet[qubit][gateIdx];
+                        // placeholder
+                        if (gate.name.empty()) {
+                            if (line == 1) {
+                                for (int i = 0; i < width; i++) {
+                                    std::cout << hwire;
+                                }
+                            } else {
+                                for (int i = 0; i < width; i++) {
+                                    std::cout << space;
+                                }
+                            }
+                        }
+                            // cx (control side)
+                        else if (gate.name == "cx") {
+                            if (line == 0) {
+                                for (int i = 0; i < width; i++) {
+                                    if (i == center && gate.qubits[0] > gate.qubits[1]) {
+                                        std::cout << vwire;
+                                    } else {
+                                        std::cout << space;
+                                    }
+                                }
+                            }
+
+                            if (line == 1) {
+                                for (int i = 0; i < width; i++) {
+                                    if (i == center) {
+                                        std::cout << control;
+                                    } else {
+                                        std::cout << hwire;
+                                    }
+                                }
+                            }
+
+                            if (line == 2) {
+                                for (int i = 0; i < width; i++) {
+                                    if (i == center && gate.qubits[0] < gate.qubits[1]) {
+                                        std::cout << vwire;
+                                    } else {
+                                        std::cout << space;
+                                    }
+                                }
+                            }
+                        }
+                            // cr (cross)
+                        else if (gate.name == "cr") {
+                            if (line == 0) {
+                                for (int i = 0; i < width; i++) {
+                                    if (i == center) {
+                                        std::cout << vwire;
+                                    } else {
+                                        std::cout << space;
+                                    }
+                                }
+                            }
+
+                            if (line == 1) {
+                                for (int i = 0; i < width; i++) {
+                                    if (i == center) {
+                                        std::cout << cross;
+                                    } else {
+                                        std::cout << hwire;
+                                    }
+                                }
+                            }
+
+                            if (line == 2) {
+                                for (int i = 0; i < width; i++) {
+                                    if (i == center) {
+                                        std::cout << vwire;
+                                    } else {
+                                        std::cout << space;
+                                    }
+                                }
+                            }
+                        }
+
+                            // single qubit gates
+                        else {
+                            if (line == 0) {
+                                std::cout << upperLeft;
+                                for (int i = 0; i < width - 2; i++) {
+                                    std::cout << upper;
+                                }
+                                std::cout << upperRight;
+                            }
+
+                            if (line == 1) {
+                                std::cout << left;
+                                int spacePad = (width - 2 - gate.name.size()) / 2;
+                                for (int i = 0; i < spacePad; i++) {
+                                    std::cout << space;
+                                }
+                                std::cout << gate.name;
+                                for (int i = 0; i < width - 2 - spacePad - gate.name.size(); i++) {
+                                    std::cout << space;
+                                }
+                                std::cout << right;
+                            }
+
+                            if (line == 2) {
+                                std::cout << lowerLeft;
+                                for (int i = 0; i < width - 2; i++) {
+                                    std::cout << lower;
+                                }
+                                std::cout << lowerRight;
+                            }
+                        }
+                    }
+
+                    // print the arrow
+                    if (blockIdx < blockNum - 1)
+                        std::cout << "»";
+                    else
+                        std::cout << space;
+
+                    // print the end of the line
+                    std::cout << std::endl;
+                }
+            }
+            std::cout << std::endl;
+        }
+
     }
 
 private:

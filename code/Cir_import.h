@@ -804,7 +804,7 @@ int *Simulate_with_partition2(std::string path, std::string file_name, std::uniq
  * @author Jason Fu
  */
 int *Simulate_with_ContractionOptimizer(std::string path, std::string file_name, std::unique_ptr<dd::Package<>> &dd,
-                                        int method, std::ofstream *fout = nullptr) {
+                                        int method, std::ofstream *fout = nullptr, bool print = false) {
     // import and preprocess the circuit
     std::map<int, gate> gate_set = import_circuit(path + file_name);
 
@@ -859,7 +859,7 @@ int *Simulate_with_ContractionOptimizer(std::string path, std::string file_name,
     auto start_simulate = std::chrono::high_resolution_clock::now();
 
     // perform contraction
-    auto result = optimizer->contract(tree, dd, release);
+    auto result = optimizer->contract(tree, dd, release, print);
 
     auto end_simulate = std::chrono::high_resolution_clock::now();
     std::cout << "Contraction time: " <<

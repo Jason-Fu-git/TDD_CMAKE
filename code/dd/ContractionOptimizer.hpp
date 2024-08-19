@@ -57,12 +57,12 @@ public:
      * and the second element is the final number of nodes in the TDD.
      * @author Jason Fu
      */
-    int *contract(ContractionTree *tr, std::unique_ptr<dd::Package<>> &dd, bool release) {
+    int *contract(ContractionTree *tr, std::unique_ptr<dd::Package<>> &dd, bool release, bool print = false) {
         auto gateSet = *gate_set;
         auto indexSet = *index_set;
         int max_nodes = 0, final_nodes = 0;
         std::vector<Node *> stack = {tr->getRoot()};
-        auto tdd = contractNode(stack, max_nodes, final_nodes, dd, release);
+        auto tdd = contractNode(stack, max_nodes, final_nodes, dd, release, print);
 //        auto tdd1 = contractNode(tr->getRoot(), max_nodes, final_nodes, dd, release);
         // do something with the tdd
 //        dd::serialize(tdd.e, std::cout, false);
@@ -85,7 +85,7 @@ protected:
     // contract using stack
     dd::TDD
     contractNode(std::vector<Node *> &stack, int &max_nodes, int &final_nodes, std::unique_ptr<dd::Package<>> &dd,
-                 bool release);
+                 bool release, bool print = false);
 
     // construct a TDD from a gate
     // the parser is copied from Cir_import.h

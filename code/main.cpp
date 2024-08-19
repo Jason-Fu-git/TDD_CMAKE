@@ -24,6 +24,7 @@ int main(int argc, char *argv[]) {
     string dataPath;
 
     string mode = argv[1];
+    bool debug = false;
 
     int s = 2;
     if (mode == "0") {
@@ -36,9 +37,23 @@ int main(int argc, char *argv[]) {
         if (dataPath.back() != '/') {
             dataPath += "/";
         }
+    } else if (mode == "2") {
+        debug = true;
     } else {
         std::cout << "Invalid output mode" << std::endl;
         return 1;
+    }
+
+    if (debug) {
+        // iterate through benchmark files
+        for (int i = s; i < argc; i++) {
+            std::string file_name = argv[i];
+            int n = get_qubits_num(inputPath + file_name);
+
+            // print the circuit
+            auto gateSet = import_circuit(inputPath + file_name);
+            ContractionTree::printQuantumCircuit(gateSet, n, true);
+        }
     }
 
     std::map<OptimizingMethod, std::string> method_map = {
@@ -70,7 +85,7 @@ int main(int argc, char *argv[]) {
 
             std::cout << "File name:" << file_name << std::endl;
 
-            nodes = Simulate_with_ContractionOptimizer(inputPath, file_name, dd, method, ofile);
+            nodes = Simulate_with_ContractionOptimizer(inputPath, file_name, dd, method, ofile, debug);
 
             std::cout << "Nodes max:" << *nodes << std::endl;
             std::cout << "Nodes Final:" << *(nodes + 1) << std::endl;
@@ -82,7 +97,9 @@ int main(int argc, char *argv[]) {
             ofile->close();
             delete ofile;
         }
+
     }
+
 
     return 0;
 }
